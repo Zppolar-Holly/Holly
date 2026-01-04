@@ -1117,39 +1117,63 @@ document.addEventListener('DOMContentLoaded', async function() {
     let currentSection = 'general';
     
     function initSidebarNavigation() {
+        console.log('🔧 Inicializando navegação da sidebar...');
+        
         const menuToggle = document.getElementById('menuToggle');
         const sidebar = document.getElementById('configSidebar');
         const sidebarClose = document.getElementById('sidebarClose');
         const navItems = document.querySelectorAll('.nav-item');
         
+        console.log(`   - Menu toggle: ${!!menuToggle}`);
+        console.log(`   - Sidebar: ${!!sidebar}`);
+        console.log(`   - Sidebar close: ${!!sidebarClose}`);
+        console.log(`   - Nav items: ${navItems.length}`);
+        
         // Toggle sidebar
         function toggleSidebar() {
-            sidebar.classList.toggle('active');
+            console.log('🔄 Alternando sidebar...');
+            if (sidebar) {
+                sidebar.classList.toggle('active');
+                console.log(`   - Sidebar ativa: ${sidebar.classList.contains('active')}`);
+            }
         }
         
         // Close sidebar
         function closeSidebar() {
-            sidebar.classList.remove('active');
+            console.log('🔄 Fechando sidebar...');
+            if (sidebar) {
+                sidebar.classList.remove('active');
+            }
         }
         
         // Show section
         function showSection(sectionName) {
+            console.log(`🔄 Mostrando seção: ${sectionName}`);
+            
             // Hide all sections
-            document.querySelectorAll('.config-section[data-section]').forEach(section => {
+            const allSections = document.querySelectorAll('.config-section[data-section]');
+            console.log(`   - Total de seções encontradas: ${allSections.length}`);
+            allSections.forEach((section, index) => {
+                const sectionType = section.getAttribute('data-section');
+                console.log(`   - Ocultando seção ${index + 1}: ${sectionType}`);
                 section.style.display = 'none';
             });
             
             // Show selected section
             const targetSection = document.querySelector(`.config-section[data-section="${sectionName}"]`);
+            console.log(`   - Seção alvo encontrada: ${!!targetSection}`);
+            
             if (targetSection) {
                 targetSection.style.display = 'block';
                 currentSection = sectionName;
+                console.log(`   ✅ Seção ${sectionName} exibida com sucesso`);
                 
                 // Update active nav item
                 navItems.forEach(item => {
                     item.classList.remove('active');
                     if (item.dataset.section === sectionName) {
                         item.classList.add('active');
+                        console.log(`   ✅ Item de menu "${item.textContent.trim()}" ativado`);
                     }
                 });
                 
@@ -1157,6 +1181,9 @@ document.addEventListener('DOMContentLoaded', async function() {
                 if (window.innerWidth <= 768) {
                     closeSidebar();
                 }
+            } else {
+                console.error(`   ❌ Seção "${sectionName}" não encontrada no DOM!`);
+                console.error(`   - Seções disponíveis:`, Array.from(allSections).map(s => s.getAttribute('data-section')));
             }
         }
         

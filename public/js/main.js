@@ -1,7 +1,7 @@
 /**
  * Main Application Script - Holly Discord Bot
  * Version: 2.4.7
- * Author: Seu Nome
+ * Author: Zppolar
  * Date: 2023
  */
 
