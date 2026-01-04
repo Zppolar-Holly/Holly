@@ -107,10 +107,6 @@
                         <i class="fas fa-bell"></i>
                         <span>Sistema de Entrada/Saída</span>
                     </a>
-                    <a href="#" class="nav-item" data-section="tiktok">
-                        <i class="fab fa-tiktok"></i>
-                        <span>Integração TikTok</span>
-                    </a>
                     <a href="#" class="nav-item" data-section="modules">
                         <i class="fas fa-puzzle-piece"></i>
                         <span>Módulos</span>
@@ -348,122 +344,6 @@
                                 <small>Comandos de música e áudio</small>
                             </span>
                         </label>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Seção TikTok -->
-                    <div class="config-section" data-section="tiktok" style="display: none;">
-                        <div class="section-header">
-                            <h2><i class="fab fa-tiktok"></i> Integração TikTok</h2>
-                        </div>
-                        <div class="config-subsection">
-                            <div class="form-group">
-                                <label class="toggle-switch">
-                                    <input type="checkbox" id="tiktok-enabled">
-                                    <span class="slider"></span>
-                                    <span>Ativar notificações do TikTok</span>
-                                </label>
-                                <small>Receba notificações quando novos vídeos forem postados ou quando uma live for iniciada</small>
-                            </div>
-                            <div id="tiktok-config" style="display: none;">
-                        <div class="form-group">
-                            <label for="tiktok-username">
-                                Username do TikTok
-                                <span class="required">*</span>
-                            </label>
-                            <input 
-                                type="text" 
-                                id="tiktok-username" 
-                                class="form-input"
-                                placeholder="exemplo: @usuario"
-                                maxlength="50"
-                            >
-                            <small>Digite o username do TikTok (com ou sem @)</small>
-                        </div>
-                        
-                        <div class="form-group">
-                            <label for="tiktok-channel">
-                                Canal de Notificação
-                                <button type="button" class="btn-icon" id="refresh-channels-tiktok" title="Atualizar lista de canais">
-                                    <i class="fas fa-sync-alt"></i>
-                                </button>
-                            </label>
-                            <select id="tiktok-channel" class="form-input">
-                                <option value="">Selecione um canal...</option>
-                            </select>
-                            <small>Canal onde as notificações serão enviadas</small>
-                        </div>
-
-                        <div class="form-group">
-                            <label>Tipos de Notificação</label>
-                            <div class="checkbox-group">
-                                <label class="checkbox-item">
-                                    <input type="checkbox" id="tiktok-notify-live" checked>
-                                    <span>
-                                        <i class="fas fa-broadcast-tower"></i>
-                                        <strong>Lives</strong>
-                                        <small>Notificar quando uma live for iniciada</small>
-                                    </span>
-                                </label>
-                            </div>
-                        </div>
-
-                        <div class="form-group">
-                            <label for="tiktok-delete-after">Segundos para deletar a mensagem</label>
-                            <input 
-                                type="number" 
-                                id="tiktok-delete-after" 
-                                class="form-input" 
-                                min="0" 
-                                value="0"
-                                placeholder="0 = nunca deletar"
-                            >
-                            <small>Deixe em 0 para nunca deletar a mensagem</small>
-                        </div>
-
-
-                        <!-- Preview para Lives -->
-                        <div class="message-preview-container" id="tiktok-live-preview-container" style="display: none;">
-                            <div class="preview-header">
-                                <h3>Pré-visualização - Live</h3>
-                                <button type="button" class="btn btn-secondary" id="edit-tiktok-live-message">
-                                    <i class="fas fa-edit"></i> Editar Mensagem
-                                </button>
-                            </div>
-                            <div class="message-preview-section">
-                                <div class="message-preview-wrapper">
-                                    <div class="message-preview">
-                                        <div class="discord-style">
-                                            <div class="discord-message" id="tiktok-live-preview-simple">
-                                                <div class="discord-message-sidebar">
-                                                    <img src="/images/holly.gif" class="discord-message-avatar" alt="Bot" onerror="this.src='/images/holly.gif'">
-                                                </div>
-                                                <div class="discord-message-content">
-                                                    <h2 class="discord-message-header">
-                                                        <span class="discord-message-username" style="color: #5865f2;">Holly</span>
-                                                        <span class="discord-message-bot-tag">APP</span>
-                                                        <span class="discord-message-timestamp"></span>
-                                                    </h2>
-                                                    <div id="tiktok-live-preview-text"></div>
-                                                    <div class="discord-message-accessories"></div>
-                                                </div>
-                                            </div>
-                                            <div class="discord-embed" id="tiktok-live-preview-embed" style="display: none;"></div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                                <div class="info-box">
-                                    <i class="fas fa-info-circle"></i>
-                                    <div>
-                                        <strong>Como funciona:</strong>
-                                        <p>O bot verifica periodicamente o perfil do TikTok configurado. Quando detectar uma live, enviará uma notificação no canal selecionado.</p>
-                                        <p><strong>Frequência de verificação:</strong> A cada 2 minutos</p>
-                                    </div>
-                                </div>
                             </div>
                         </div>
                     </div>

@@ -39,41 +39,6 @@
     --focus-ring: 0 0 0 3px rgba(156, 106, 255, 0.5);
 }
 
-/* TikTok Integration Styles */
-.info-box {
-    background: rgba(138, 79, 255, 0.05);
-    border: 1px solid rgba(138, 79, 255, 0.2);
-    border-radius: 8px;
-    padding: 1rem;
-    margin-top: 1rem;
-    display: flex;
-    gap: 1rem;
-    align-items: flex-start;
-}
-
-.info-box i {
-    color: var(--primary-color);
-    font-size: 1.2rem;
-    margin-top: 0.2rem;
-    flex-shrink: 0;
-}
-
-.info-box div {
-    flex: 1;
-}
-
-.info-box strong {
-    display: block;
-    margin-bottom: 0.5rem;
-    color: var(--text-color);
-}
-
-.info-box p {
-    margin: 0.5rem 0;
-    color: var(--text-light);
-    font-size: 0.9rem;
-    line-height: 1.5;
-}
 
 .checkbox-group {
     display: flex;

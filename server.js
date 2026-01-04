@@ -86,9 +86,6 @@ app.post('/auth/logout', discordAuth.authenticateToken, discordAuth.logout);
 // Shared bot instance (will be set when bot starts)
 let botClient = null;
 
-// TikTok integration
-const tiktokIntegration = require('./server/tiktok');
-
 // Rotas API
 app.get('/api/user', discordAuth.authenticateToken, discordAuth.getUserData);
 app.get('/api/user/guilds', discordAuth.authenticateToken, discordAuth.getUserGuilds);
@@ -703,97 +700,6 @@ app.post('/api/server/:guildId/module', discordAuth.authenticateToken, checkServ
     }
 });
 
-// Update TikTok configuration
-app.post('/api/server/:guildId/tiktok', discordAuth.authenticateToken, checkServerPermission, async (req, res) => {
-    const { guildId } = req.params;
-    const { enabled, username, channelId, notifyVideo, notifyLive, videoMessage, videoEmbed, liveMessage, liveEmbed, videoDeleteAfter, liveDeleteAfter } = req.body;
-    
-    try {
-        if (useDatabase && db && db.updateTikTokConfig) {
-            const currentConfig = await dataStore.getServerConfig(guildId);
-            const currentTiktok = currentConfig.tiktok || {};
-            
-            const tiktokConfig = {
-                enabled: enabled || false,
-                username: (username || '').replace('@', '').trim(),
-                channelId: channelId || '',
-                notifyVideo: notifyVideo !== false,
-                notifyLive: notifyLive !== false,
-                videoMessage: videoMessage !== undefined ? videoMessage : (currentTiktok.videoMessage || ''),
-                videoEmbed: videoEmbed !== undefined ? videoEmbed : (currentTiktok.videoEmbed || null),
-                liveMessage: liveMessage !== undefined ? liveMessage : (currentTiktok.liveMessage || ''),
-                liveEmbed: liveEmbed !== undefined ? liveEmbed : (currentTiktok.liveEmbed || null),
-                videoDeleteAfter: videoDeleteAfter !== undefined ? parseInt(videoDeleteAfter) || 0 : (currentTiktok.videoDeleteAfter || 0),
-                liveDeleteAfter: liveDeleteAfter !== undefined ? parseInt(liveDeleteAfter) || 0 : (currentTiktok.liveDeleteAfter || 0),
-                lastVideoId: currentTiktok.lastVideoId || null,
-                lastLiveStatus: currentTiktok.lastLiveStatus || false
-            };
-            
-            await db.updateTikTokConfig(guildId, tiktokConfig);
-            const config = await dataStore.getServerConfig(guildId);
-            res.json({ success: true, tiktok: config.tiktok || tiktokConfig });
-        } else {
-            res.status(500).json({ error: 'Banco de dados não disponível' });
-        }
-    } catch (error) {
-        console.error('Erro ao atualizar configuração TikTok:', error);
-        res.status(500).json({ error: 'Erro ao atualizar configuração TikTok' });
-    }
-});
-
-// Force check TikTok updates (manual trigger)
-app.post('/api/server/:guildId/tiktok/check', discordAuth.authenticateToken, checkServerPermission, async (req, res) => {
-    try {
-        if (!tiktokIntegration || !tiktokIntegration.forceCheckTikTokUpdates) {
-            return res.status(500).json({ error: 'Sistema TikTok não disponível' });
-        }
-        
-        console.log('🔄 Verificação manual do TikTok solicitada via API');
-        await tiktokIntegration.forceCheckTikTokUpdates();
-        
-        res.json({ success: true, message: 'Verificação do TikTok executada' });
-    } catch (error) {
-        console.error('Erro ao forçar verificação TikTok:', error);
-        res.status(500).json({ error: 'Erro ao verificar TikTok' });
-    }
-});
-
-// Endpoint for bot to receive TikTok notifications (when bot and web server are separate)
-// This endpoint receives the notification data and the bot should call it to send the message
-app.post('/api/tiktok/notify', express.json(), async (req, res) => {
-    const { secret, guildId, type, config, data } = req.body;
-    
-    // Verify secret token
-    const expectedSecret = process.env.BOT_SYNC_SECRET || 'default_secret_change_me';
-    if (secret !== expectedSecret) {
-        console.warn('⚠️ Tentativa de enviar notificação TikTok com secret inválido');
-        return res.status(401).json({ error: 'Unauthorized' });
-    }
-    
-    try {
-        console.log(`📨 Recebida requisição para enviar notificação TikTok (${type}) para servidor ${guildId}`);
-        
-        // If we have direct bot client access, use it
-        if (botClient && botClient.guilds && botClient.guilds.cache) {
-            const guild = botClient.guilds.cache.get(guildId);
-            if (guild) {
-                const channel = guild.channels.cache.get(config.channelId);
-                if (channel) {
-                    // Use the existing sendTikTokNotification function
-                    await tiktokIntegration.checkServerTikTok({ guildId, tiktok: config });
-                    return res.json({ success: true, message: 'Notificação processada' });
-                }
-            }
-        }
-        
-        // If no direct access, return error - bot needs to handle this
-        console.warn('⚠️ Bot client não disponível para enviar notificação TikTok diretamente');
-        res.status(503).json({ error: 'Bot client não disponível - bot precisa implementar endpoint para enviar mensagens' });
-    } catch (error) {
-        console.error('Erro ao processar notificação TikTok:', error);
-        res.status(500).json({ error: 'Erro ao processar notificação' });
-    }
-});
 
 // Check if user is admin
 app.get('/api/user/is-admin', discordAuth.authenticateToken, async (req, res) => {
@@ -851,22 +757,6 @@ app.setBotClient = (client) => {
     console.log('✅ Bot client registrado no servidor web');
     console.log(`   - Bot disponível: ${botClient ? '✅' : '❌'}`);
     console.log(`   - Database disponível: ${useDatabase && db ? '✅' : '❌'}`);
-    
-    // Initialize TikTok polling if database is available
-    if (useDatabase && db) {
-        try {
-            console.log('🔄 Tentando inicializar sistema TikTok...');
-            tiktokIntegration.initTikTokPolling(db, botClient);
-            console.log('✅ Sistema TikTok inicializado com sucesso');
-        } catch (error) {
-            console.error('❌ Erro ao inicializar polling TikTok:', error.message);
-            console.error(error.stack);
-        }
-    } else {
-        console.warn('⚠️ Sistema TikTok não inicializado:');
-        if (!useDatabase) console.warn('   - Database não está habilitado');
-        if (!db) console.warn('   - Database não está disponível');
-    }
     
     // Start periodic data sync from bot to site
     if (client && typeof client.getStats === 'function') {
@@ -983,23 +873,8 @@ app.post('/api/bot/register', express.json(), async (req, res) => {
     console.log('='.repeat(60));
     
     // Since bot and web server are separate processes, we can't pass the client object
-    // But we can mark that bot is active and try to initialize TikTok
-    // The TikTok system will need to work differently - it should make HTTP requests to the bot
-    // For now, let's just mark bot as active
+    // But we can mark that bot is active
     botClient = { active: true, registered: true }; // Placeholder object
-    
-    // Try to initialize TikTok if database is available
-    if (useDatabase && db) {
-        try {
-            console.log('🔄 Tentando inicializar sistema TikTok após registro do bot...');
-            // Note: TikTok will need bot client to send messages, but since they're separate processes,
-            // we'll need to modify TikTok to make HTTP requests to bot instead
-            // For now, we'll initialize with a placeholder
-            tiktokIntegration.initTikTokPolling(db, botClient);
-        } catch (error) {
-            console.error('❌ Erro ao inicializar TikTok após registro:', error.message);
-        }
-    }
     
     console.log('='.repeat(60) + '\n');
     
@@ -1020,16 +895,6 @@ app.post('/api/bot/sync', express.json(), async (req, res) => {
     if (!botClient || !botClient.active) {
         console.log('🤖 Bot detectado via sync - marcando como ativo...');
         botClient = { active: true, registered: true };
-        
-        // Try to initialize TikTok if not already initialized
-        if (useDatabase && db) {
-            try {
-                console.log('🔄 Tentando inicializar sistema TikTok após detecção do bot...');
-                tiktokIntegration.initTikTokPolling(db, botClient);
-            } catch (error) {
-                console.error('❌ Erro ao inicializar TikTok:', error.message);
-            }
-        }
     }
     
     try {
@@ -1468,38 +1333,6 @@ app.listen(PORT, () => {
     console.log(`   - Porta: ${PORT}`);
     console.log(`   - Database: ${useDatabase && db ? '✅ Habilitado' : '❌ Desabilitado'}`);
     console.log(`   - Bot Client: ${botClient ? '✅ Disponível' : '⏳ Aguardando registro'}`);
-    console.log(`   - TikTok Integration: ${tiktokIntegration ? '✅ Carregado' : '❌ Não carregado'}`);
     console.log('💡 Bot roda separadamente - não tentando carregar bot no servidor web');
     console.log(`${'='.repeat(60)}\n`);
-    
-    // Try to initialize TikTok polling if database is available (even without bot initially)
-    // The bot will be registered later via setBotClient
-    if (useDatabase && db && tiktokIntegration) {
-        console.log('🔄 Verificando se sistema TikTok pode ser inicializado...');
-        // Try to initialize (will fail if bot is not available, but will retry when bot is registered)
-        if (botClient) {
-            try {
-                tiktokIntegration.initTikTokPolling(db, botClient);
-            } catch (error) {
-                console.error('❌ Erro ao inicializar TikTok no startup:', error.message);
-            }
-        } else {
-            console.log('⏳ Aguardando bot client ser registrado para inicializar TikTok...');
-        }
-    }
-    
-    // Periodic check to initialize TikTok if bot becomes available later
-    setInterval(() => {
-        if (useDatabase && db && botClient && tiktokIntegration) {
-            // Check if TikTok is already initialized by checking if pollingInterval exists
-            // This is a simple check - if the module exports a way to check status, use that
-            // For now, we'll just try to initialize (it will handle if already initialized)
-            try {
-                // Only try if we haven't initialized yet
-                // We can't easily check if it's initialized, so we'll just let setBotClient handle it
-            } catch (error) {
-                // Silently ignore - initialization will happen when bot is registered
-            }
-        }
-    }, 30000); // Check every 30 seconds
 });

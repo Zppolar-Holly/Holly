@@ -412,61 +412,6 @@ document.addEventListener('DOMContentLoaded', async function() {
         };
 
         // Join notifications
-        // Populate TikTok configuration
-        const tiktokConfig = config.tiktok || {
-            enabled: false,
-            username: '',
-            channelId: '',
-            notifyVideo: true,
-            notifyLive: true
-        };
-        
-        // Update serverConfig for use in other functions
-        if (!serverConfig) {
-            serverConfig = config;
-        } else {
-            serverConfig.tiktok = tiktokConfig;
-        }
-        
-        const tiktokEnabled = document.getElementById('tiktok-enabled');
-        const tiktokConfigDiv = document.getElementById('tiktok-config');
-        const tiktokUsername = document.getElementById('tiktok-username');
-        const tiktokChannel = document.getElementById('tiktok-channel');
-        const tiktokNotifyVideo = document.getElementById('tiktok-notify-video');
-        const tiktokNotifyLive = document.getElementById('tiktok-notify-live');
-        
-        if (tiktokEnabled) {
-            tiktokEnabled.checked = tiktokConfig.enabled || false;
-            if (tiktokConfigDiv) {
-                tiktokConfigDiv.style.display = tiktokEnabled.checked ? 'block' : 'none';
-            }
-        }
-        
-        if (tiktokUsername) {
-            tiktokUsername.value = tiktokConfig.username || '';
-        }
-        
-        if (tiktokChannel) {
-            tiktokChannel.value = tiktokConfig.channelId || '';
-        }
-        
-        if (tiktokNotifyVideo) {
-            tiktokNotifyVideo.checked = tiktokConfig.notifyVideo !== false;
-        }
-        
-        if (tiktokNotifyLive) {
-            tiktokNotifyLive.checked = tiktokConfig.notifyLive !== false;
-        }
-        
-        // Update TikTok previews after form is populated
-        setTimeout(() => {
-            if (tiktokConfig.enabled) {
-                // Update live preview
-                if (tiktokNotifyLive && tiktokNotifyLive.checked) {
-                    updateTikTokPreview('tiktok-live');
-                }
-            }
-        }, 200);
 
         if (UI.notifyJoinEnabled) {
             UI.notifyJoinEnabled.checked = notifications.memberJoin?.enabled || false;
@@ -524,40 +469,6 @@ document.addEventListener('DOMContentLoaded', async function() {
     }
 
     // Populate channels dropdown
-    // Populate TikTok channel select
-    function populateTiktokChannel(channels) {
-        try {
-            if (!channels || !Array.isArray(channels)) {
-                return;
-            }
-            
-            const tiktokChannel = document.getElementById('tiktok-channel');
-            if (!tiktokChannel) return;
-            
-            const currentValue = tiktokChannel.value;
-            tiktokChannel.innerHTML = '<option value="">Selecione um canal...</option>';
-            
-            channels.forEach(channel => {
-                try {
-                    if (!channel || !channel.id || !channel.name) return;
-                    
-                    const option = document.createElement('option');
-                    option.value = channel.id;
-                    option.textContent = `# ${channel.name}`;
-                    if (channel.id === currentValue) {
-                        option.selected = true;
-                    }
-                    tiktokChannel.appendChild(option);
-                } catch (error) {
-                    console.warn('Erro ao adicionar canal TikTok:', error);
-                }
-            });
-        } catch (error) {
-            console.error('Erro crítico em populateTiktokChannel:', error);
-            // Não relançar o erro para não travar a página
-        }
-    }
-
     function populateChannels(channels) {
         try {
             if (!channels || !Array.isArray(channels)) {
@@ -593,13 +504,6 @@ document.addEventListener('DOMContentLoaded', async function() {
                     console.error('Erro ao popular select:', error);
                 }
             });
-            
-            // Also populate TikTok channel
-            try {
-                populateTiktokChannel(channels);
-            } catch (error) {
-                console.warn('Erro ao popular canal TikTok:', error);
-            }
         } catch (error) {
             console.error('Erro crítico em populateChannels:', error);
             // Não relançar o erro para não travar a página
@@ -740,28 +644,6 @@ document.addEventListener('DOMContentLoaded', async function() {
             );
 
             await Promise.all(modulePromises);
-
-            // Save TikTok configuration
-            const tiktokEnabled = document.getElementById('tiktok-enabled')?.checked || false;
-            const tiktokUsername = document.getElementById('tiktok-username')?.value.trim() || '';
-            const tiktokChannel = document.getElementById('tiktok-channel')?.value || '';
-            const tiktokNotifyLive = document.getElementById('tiktok-notify-live')?.checked !== false;
-
-            if (tiktokEnabled && (!tiktokUsername || !tiktokChannel)) {
-                showNotification('⚠️ Para ativar TikTok, preencha username e canal', 'warning');
-            } else {
-                await fetch(`${CONFIG.API_BASE_URL}/api/server/${guildId}/tiktok`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    credentials: 'include',
-                    body: JSON.stringify({
-                        enabled: tiktokEnabled,
-                        username: tiktokUsername,
-                        channelId: tiktokChannel,
-                        notifyLive: tiktokNotifyLive
-                    })
-                });
-            }
 
             showNotification('✅ Configurações salvas com sucesso!', 'success');
             
@@ -935,90 +817,6 @@ document.addEventListener('DOMContentLoaded', async function() {
                     showNotification('✅ Canais atualizados!', 'success');
                 }, 2000);
             });
-        }
-
-        // TikTok toggle
-        const tiktokEnabled = document.getElementById('tiktok-enabled');
-        const tiktokConfigDiv = document.getElementById('tiktok-config');
-        if (tiktokEnabled && tiktokConfigDiv) {
-            // Set initial state
-            tiktokConfigDiv.style.display = tiktokEnabled.checked ? 'block' : 'none';
-            
-            tiktokEnabled.addEventListener('change', (e) => {
-                tiktokConfigDiv.style.display = e.target.checked ? 'block' : 'none';
-            });
-        }
-
-        // TikTok notification type toggles
-        const tiktokNotifyLive = document.getElementById('tiktok-notify-live');
-        const tiktokLivePreview = document.getElementById('tiktok-live-preview-container');
-        
-        if (tiktokNotifyLive && tiktokLivePreview) {
-            tiktokLivePreview.style.display = tiktokNotifyLive.checked ? 'block' : 'none';
-            tiktokNotifyLive.addEventListener('change', (e) => {
-                tiktokLivePreview.style.display = e.target.checked ? 'block' : 'none';
-            });
-        }
-
-        // TikTok channel refresh
-        const refreshChannelsTiktok = document.getElementById('refresh-channels-tiktok');
-        if (refreshChannelsTiktok) {
-            refreshChannelsTiktok.addEventListener('click', async () => {
-                refreshChannelsTiktok.disabled = true;
-                refreshChannelsTiktok.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
-                
-                try {
-                    await fetch(`${CONFIG.API_BASE_URL}/api/bot/sync`, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        credentials: 'include',
-                        body: JSON.stringify({ guildId })
-                    });
-                } catch (error) {
-                    console.error('Erro ao solicitar canais do bot:', error);
-                }
-                
-                setTimeout(async () => {
-                    await loadGuildChannels(true);
-                    refreshChannelsTiktok.disabled = false;
-                    refreshChannelsTiktok.innerHTML = '<i class="fas fa-sync-alt"></i>';
-                    showNotification('✅ Canais atualizados!', 'success');
-                }, 2000);
-            });
-        }
-
-        // Populate TikTok channel select
-        function populateTiktokChannel(channels) {
-            const tiktokChannel = document.getElementById('tiktok-channel');
-            if (!tiktokChannel) return;
-            
-            const currentValue = tiktokChannel.value;
-            tiktokChannel.innerHTML = '<option value="">Selecione um canal...</option>';
-            
-            channels.forEach(channel => {
-                const option = document.createElement('option');
-                option.value = channel.id;
-                option.textContent = `# ${channel.name}`;
-                if (channel.id === currentValue) {
-                    option.selected = true;
-                }
-                tiktokChannel.appendChild(option);
-            });
-        }
-
-        // Update populateChannels to also populate TikTok channel (only if not already wrapped)
-        if (typeof populateChannels === 'function' && !populateChannels._tiktokWrapped) {
-            const originalPopulateChannels = populateChannels;
-            populateChannels = function(channels) {
-                try {
-                    originalPopulateChannels(channels);
-                    populateTiktokChannel(channels);
-                } catch (error) {
-                    console.error('Erro ao popular canais:', error);
-                    // Continue mesmo se falhar
-                }
-            };
-            populateChannels._tiktokWrapped = true;
         }
 
         // Save button
@@ -1344,30 +1142,7 @@ document.addEventListener('DOMContentLoaded', async function() {
         // Clear existing placeholders
         tutorialContainer.innerHTML = '';
         
-        if (type === 'tiktok-live') {
-            // TikTok Live placeholders
-            const livePlaceholders = [
-                { name: '{username}', value: 'Nome de usuário do TikTok' },
-                { name: '{profile.name}', value: 'Nome de exibição do perfil' },
-                { name: '{profile.url}', value: 'URL do perfil do TikTok' },
-                { name: '{profile.avatar}', value: 'URL do avatar do perfil' },
-                { name: '{profile.followers}', value: 'Número de seguidores (formatado: 1.2M, 5.5K)' },
-                { name: '{profile.videos}', value: 'Número total de vídeos (formatado)' },
-                { name: '{live.title}', value: 'Título da live' },
-                { name: '{live.url}', value: 'URL da live' },
-                { name: '{live.viewers}', value: 'Número de visualizadores (formatado)' }
-            ];
-            
-            livePlaceholders.forEach(placeholder => {
-                const item = document.createElement('div');
-                item.className = 'placeholder-item';
-                item.innerHTML = `
-                    <div class="placeholder-name"><code>${placeholder.name}</code></div>
-                    <div class="placeholder-value">${placeholder.value}</div>
-                `;
-                tutorialContainer.appendChild(item);
-            });
-        } else {
+        {
             // Default placeholders (join/leave)
             const defaultPlaceholders = [
                 { name: '{user}', value: 'Menção do usuário (@Usuario)' },
@@ -1409,8 +1184,7 @@ document.addEventListener('DOMContentLoaded', async function() {
         console.log('✅ Modal encontrado, configurando...');
         const titles = {
             'join': 'Editar Mensagem de Entrada',
-            'leave': 'Editar Mensagem de Saída',
-            'tiktok-live': 'Editar Mensagem - Live TikTok'
+            'leave': 'Editar Mensagem de Saída'
         };
         modalTitle.textContent = titles[type] || 'Editar Mensagem';
         
@@ -1425,13 +1199,6 @@ document.addEventListener('DOMContentLoaded', async function() {
             notification = notifications.memberJoin;
         } else if (type === 'leave') {
             notification = notifications.memberLeave;
-        } else if (type === 'tiktok-live') {
-            const tiktokConfig = serverConfig?.tiktok || {};
-            notification = {
-                message: tiktokConfig.liveMessage || '',
-                embed: tiktokConfig.liveEmbed || null,
-                deleteAfter: tiktokConfig.deleteAfter || 0
-            };
         } else {
             notification = notifications.memberJoin;
         }
@@ -1662,7 +1429,7 @@ document.addEventListener('DOMContentLoaded', async function() {
         const previewSimple = document.getElementById('modal-preview-simple');
         const previewEmbed = document.getElementById('modal-preview-embed');
         
-        // Replace variables helper - supports TikTok placeholders based on currentEditType
+        // Replace variables helper
         const replaceVars = (text) => {
             if (!text) return '';
             const serverName = UI.serverName?.textContent || 'Server';
@@ -1679,11 +1446,6 @@ document.addEventListener('DOMContentLoaded', async function() {
             
             // Get server icon
             const serverIcon = UI.serverIcon?.src || 'https://cdn.discordapp.com/embed/avatars/0.png';
-            
-            // Get TikTok config if editing TikTok messages
-            const tiktokConfig = serverConfig?.tiktok || {};
-            const tiktokUsername = tiktokConfig.username || 'usuario';
-            const tiktokProfileUrl = `https://www.tiktok.com/@${tiktokUsername}`;
             
             // Replace channel mentions (<#channelId>) with channel names
             let processedText = text.replace(/<#(\d+)>/g, (match, channelId) => {
@@ -1710,7 +1472,7 @@ document.addEventListener('DOMContentLoaded', async function() {
             // Base replacements (always available)
             processedText = processedText
                 .replace(/\{user\}/g, `<span class="discord-mention">@${userName}</span>`)
-                .replace(/\{username\}/g, (currentEditType === 'tiktok-live') ? tiktokUsername : userName)
+                .replace(/\{username\}/g, userName)
                 .replace(/\{user\.avatar\}/g, userAvatar)
                 .replace(/\{user\.id\}/g, userId)
                 .replace(/\{server\.icon\}/g, serverIcon)
@@ -1718,25 +1480,6 @@ document.addEventListener('DOMContentLoaded', async function() {
                 .replace(/\{date\}/g, date)
                 .replace(/\{server\}/g, serverName)
                 .replace(/\{members\}/g, '100');
-            
-            // TikTok-specific replacements
-            if (currentEditType === 'tiktok-live') {
-                // Profile placeholders (available for both video and live)
-                processedText = processedText
-                    .replace(/\{profile\.name\}/g, tiktokUsername)
-                    .replace(/\{profile\.url\}/g, tiktokProfileUrl)
-                    .replace(/\{profile\.avatar\}/g, 'https://p16-sign-va.tiktokcdn.com/tos-maliva-p-0068/avatar/default_avatar.png')
-                    .replace(/\{profile\.followers\}/g, '1.2M')
-                    .replace(/\{profile\.videos\}/g, '150');
-                
-                // Live-specific placeholders (only for tiktok-live)
-                if (currentEditType === 'tiktok-live') {
-                    processedText = processedText
-                        .replace(/\{live\.title\}/g, 'Live em andamento')
-                        .replace(/\{live\.url\}/g, `https://www.tiktok.com/@${tiktokUsername}/live`)
-                        .replace(/\{live\.viewers\}/g, '1.5K');
-                }
-            }
             
             // Parse Discord markdown formatting (order matters!)
             // 1. Code blocks first (```language\ncode\n```) - must be before inline code
@@ -1824,7 +1567,7 @@ document.addEventListener('DOMContentLoaded', async function() {
         let embedHTML = `<div class="discord-embed-color-bar" style="background-color: ${color};"></div>`;
         embedHTML += '<div class="discord-embed-content">';
         
-        // Helper to replace placeholders in URLs - supports TikTok placeholders
+        // Helper to replace placeholders in URLs
         const replaceVarsInUrl = (url) => {
             if (!url) return '';
             const serverIcon = UI.serverIcon?.src || 'https://cdn.discordapp.com/embed/avatars/0.png';
@@ -1837,23 +1580,6 @@ document.addEventListener('DOMContentLoaded', async function() {
                 .replace(/\{user\.avatar\}/g, userAvatar)
                 .replace(/\{user\.id\}/g, userId)
                 .replace(/\{server\.icon\}/g, serverIcon);
-            
-            // TikTok-specific URL replacements
-            if (currentEditType === 'tiktok-live') {
-                const tiktokConfig = serverConfig?.tiktok || {};
-                const tiktokUsername = tiktokConfig.username || 'usuario';
-                const tiktokProfileUrl = `https://www.tiktok.com/@${tiktokUsername}`;
-                
-                processedUrl = processedUrl
-                    .replace(/\{username\}/g, tiktokUsername)
-                    .replace(/\{profile\.url\}/g, tiktokProfileUrl)
-                    .replace(/\{profile\.avatar\}/g, 'https://p16-sign-va.tiktokcdn.com/tos-maliva-p-0068/avatar/default_avatar.png');
-                
-                if (currentEditType === 'tiktok-live') {
-                    processedUrl = processedUrl
-                        .replace(/\{live\.url\}/g, `https://www.tiktok.com/@${tiktokUsername}/live`);
-                }
-            }
             
             return processedUrl;
         };
@@ -2010,35 +1736,7 @@ document.addEventListener('DOMContentLoaded', async function() {
         
         // Save directly to server
         try {
-            if (currentEditType === 'tiktok-live') {
-                // Save TikTok message
-                const deleteAfter = document.getElementById('tiktok-delete-after')?.value || 0;
-                const tiktokConfig = serverConfig.tiktok || {};
-                
-                tiktokConfig.liveMessage = finalMessage;
-                tiktokConfig.liveEmbed = finalEmbed;
-                
-                tiktokConfig.deleteAfter = parseInt(deleteAfter) || 0;
-                
-                await fetch(`${CONFIG.API_BASE_URL}/api/server/${guildId}/tiktok`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    credentials: 'include',
-                    body: JSON.stringify({
-                        enabled: tiktokConfig.enabled || false,
-                        username: tiktokConfig.username || '',
-                        channelId: tiktokConfig.channelId || '',
-                        notifyLive: tiktokConfig.notifyLive !== false,
-                        liveMessage: tiktokConfig.liveMessage || '',
-                        liveEmbed: tiktokConfig.liveEmbed || null,
-                        deleteAfter: tiktokConfig.deleteAfter || 0
-                    })
-                });
-                
-                // Update preview
-                updateTikTokPreview(currentEditType);
-            } else {
-                // Save join/leave notification
+            // Save join/leave notification
                 if (!serverConfig.notifications) {
                     serverConfig.notifications = {
                         memberJoin: { enabled: false, channelId: null, message: '', embed: null, deleteAfter: 0 },
@@ -2079,220 +1777,6 @@ document.addEventListener('DOMContentLoaded', async function() {
         } catch (error) {
             console.error('Erro ao salvar mensagem:', error);
             showNotification('❌ Erro ao salvar mensagem. Tente novamente.', 'error');
-        }
-    }
-    
-    // Update TikTok preview
-    function updateTikTokPreview(type) {
-        console.log(`🔄 Atualizando preview TikTok: ${type}`);
-        const tiktokConfig = serverConfig?.tiktok || {};
-        let message = '';
-        let embed = null;
-        
-        if (type === 'tiktok-live') {
-            message = tiktokConfig.liveMessage || '';
-            embed = tiktokConfig.liveEmbed || null;
-            console.log(`   - Live message: ${message ? message.substring(0, 50) + '...' : 'vazia'}`);
-            console.log(`   - Live embed: ${embed ? 'configurado' : 'não configurado'}`);
-        }
-        
-        const previewContainer = document.getElementById('tiktok-live-preview-container');
-        
-        if (!previewContainer) {
-            console.warn(`⚠️ Container de preview não encontrado para ${type}`);
-            return;
-        }
-        
-        console.log(`   - Container encontrado: ${previewContainer.id}`);
-        
-        const previewSimple = document.getElementById('tiktok-live-preview-simple');
-        const previewEmbed = document.getElementById('tiktok-live-preview-embed');
-        const previewText = document.getElementById('tiktok-live-preview-text');
-        
-        // Replace variables helper - different placeholders for video and live
-        const replaceVars = (text) => {
-            if (!text) return '';
-            const serverName = UI.serverName?.textContent || 'Server';
-            const now = new Date();
-            const time = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false });
-            const date = now.toLocaleDateString('en-US', { day: '2-digit', month: '2-digit', year: 'numeric' });
-            
-            const userName = currentUser?.username || 'Usuario';
-            const userId = currentUser?.id || '000000000000000000';
-            const userAvatar = currentUser?.avatar 
-                ? `https://cdn.discordapp.com/avatars/${currentUser.id}/${currentUser.avatar}.png?size=64`
-                : '/images/holly.gif';
-            
-            const serverIcon = UI.serverIcon?.src || 'https://cdn.discordapp.com/embed/avatars/0.png';
-            const tiktokUsername = tiktokConfig.username || 'usuario';
-            const tiktokProfileUrl = `https://www.tiktok.com/@${tiktokUsername}`;
-            
-            // Replace channel mentions (<#channelId>) with channel names
-            let processedText = text.replace(/<#(\d+)>/g, (match, channelId) => {
-                const channel = (typeof guildChannels !== 'undefined' && guildChannels && guildChannels.length > 0) 
-                    ? guildChannels.find(c => c.id === channelId) 
-                    : null;
-                const channelName = channel ? channel.name : 'canal-desconhecido';
-                return `<span class="discord-mention">#${channelName}</span>`;
-            });
-            
-            // Replace role mentions (<@&roleId>) with role names
-            processedText = processedText.replace(/<@&(\d+)>/g, (match, roleId) => {
-                const role = (typeof guildRoles !== 'undefined' && guildRoles && guildRoles.length > 0) 
-                    ? guildRoles.find(r => r.id === roleId) 
-                    : null;
-                const roleName = role ? role.name : 'cargo-desconhecido';
-                return `<span class="discord-mention">@${roleName}</span>`;
-            });
-            
-            // Replace emoji mentions (<:name:id> or <a:name:id>)
-            processedText = processedText.replace(/<(a?):([^:]+):(\d+)>/g, (match, animated, emojiName, emojiId) => {
-                const emojiUrl = `https://cdn.discordapp.com/emojis/${emojiId}.${animated ? 'gif' : 'png'}?size=32`;
-                return `<img src="${emojiUrl}" alt="${emojiName}" class="discord-emoji" style="width: 22px; height: 22px; vertical-align: middle; display: inline-block;">`;
-            });
-            
-            // Base replacements (always available)
-            processedText = processedText
-                .replace(/\{username\}/g, tiktokUsername)
-                .replace(/\{profile\.name\}/g, tiktokUsername)
-                .replace(/\{profile\.url\}/g, tiktokProfileUrl)
-                .replace(/\{profile\.avatar\}/g, 'https://p16-sign-va.tiktokcdn.com/tos-maliva-p-0068/avatar/default_avatar.png')
-                .replace(/\{profile\.followers\}/g, '1.2M')
-                .replace(/\{profile\.videos\}/g, '150')
-                .replace(/\{user\}/g, `<span class="discord-mention">@${userName}</span>`)
-                .replace(/\{user\.avatar\}/g, userAvatar)
-                .replace(/\{user\.id\}/g, userId)
-                .replace(/\{server\.icon\}/g, serverIcon)
-                .replace(/\{time\}/g, time)
-                .replace(/\{date\}/g, date)
-                .replace(/\{server\}/g, serverName)
-                .replace(/\{members\}/g, '100');
-            
-            // Type-specific replacements
-            if (type === 'tiktok-live') {
-                // Live placeholders only
-                processedText = processedText
-                    .replace(/\{live\.title\}/g, 'Live em andamento')
-                    .replace(/\{live\.url\}/g, `https://www.tiktok.com/@${tiktokUsername}/live`)
-                    .replace(/\{live\.viewers\}/g, '1.5K');
-            }
-            
-            // Parse markdown
-            processedText = processedText.replace(/\*\*([^*]+)\*\*/g, '<strong class="discord-bold">$1</strong>');
-            processedText = processedText.replace(/\*([^*]+)\*/g, '<em class="discord-italic">$1</em>');
-            processedText = processedText.replace(/`([^`]+)`/g, '<code class="discord-inline-code">$1</code>');
-            processedText = processedText.replace(/\n/g, '<br>');
-            
-            return processedText;
-        };
-        
-        // Replace variables in URLs
-        const replaceVarsInUrl = (url) => {
-            if (!url) return '';
-            const tiktokUsername = tiktokConfig.username || 'usuario';
-            const tiktokProfileUrl = `https://www.tiktok.com/@${tiktokUsername}`;
-            
-            let processedUrl = url
-                .replace(/\{username\}/g, tiktokUsername)
-                .replace(/\{profile\.url\}/g, tiktokProfileUrl)
-                .replace(/\{profile\.avatar\}/g, 'https://p16-sign-va.tiktokcdn.com/tos-maliva-p-0068/avatar/default_avatar.png');
-            
-            if (type === 'tiktok-live') {
-                processedUrl = processedUrl
-                    .replace(/\{live\.url\}/g, `https://www.tiktok.com/@${tiktokUsername}/live`);
-            }
-            
-            return processedUrl;
-        };
-        
-        if (previewText) {
-            // Use appropriate default message based on type
-            const defaultMessage = type === 'tiktok-live' 
-                ? '🔴 Live iniciada!'
-                : '🎥 Novo vídeo do TikTok!';
-            previewText.innerHTML = replaceVars(message || defaultMessage);
-        }
-        
-        if (previewSimple) {
-            previewSimple.style.display = (message || !embed) ? 'flex' : 'none';
-        }
-        
-        if (previewEmbed && embed) {
-            // Build embed HTML
-            let embedHTML = `<div class="discord-embed-color-bar" style="background-color: ${embed.color || (type === 'tiktok-live' ? '#FF0050' : '#000000')};"></div>`;
-            embedHTML += '<div class="discord-embed-content">';
-            
-            // Author
-            if (embed.author && embed.author.name) {
-                embedHTML += '<div class="discord-embed-author">';
-                if (embed.author.icon_url) {
-                    const authorIconUrl = replaceVarsInUrl(embed.author.icon_url);
-                    embedHTML += `<img src="${authorIconUrl}" alt="Author" class="discord-embed-author-icon" onerror="this.style.display='none'">`;
-                }
-                if (embed.author.url) {
-                    embedHTML += `<a href="${replaceVarsInUrl(embed.author.url)}" target="_blank" style="color: inherit; text-decoration: none;">${replaceVars(embed.author.name)}</a>`;
-                } else {
-                    embedHTML += replaceVars(embed.author.name);
-                }
-                embedHTML += '</div>';
-            }
-            
-            // Title
-            if (embed.title) {
-                if (embed.titleUrl) {
-                    embedHTML += `<div class="discord-embed-title"><a href="${replaceVarsInUrl(embed.titleUrl)}" target="_blank" style="color: inherit; text-decoration: none;">${replaceVars(embed.title)}</a></div>`;
-                } else {
-                    embedHTML += `<div class="discord-embed-title">${replaceVars(embed.title)}</div>`;
-                }
-            }
-            
-            // Description
-            if (embed.description) {
-                embedHTML += `<div class="discord-embed-description">${replaceVars(embed.description)}</div>`;
-            }
-            
-            // Fields
-            if (embed.fields && Array.isArray(embed.fields) && embed.fields.length > 0) {
-                embedHTML += '<div class="discord-embed-fields">';
-                embed.fields.forEach(field => {
-                    if (field.name || field.value) {
-                        embedHTML += `<div class="discord-embed-field" style="display: ${field.inline ? 'inline-block' : 'block'}; width: ${field.inline ? '48%' : '100%'}; margin-right: ${field.inline ? '2%' : '0'};">
-                            <div class="discord-embed-field-name">${replaceVars(field.name || '\u200b')}</div>
-                            <div class="discord-embed-field-value">${replaceVars(field.value || '\u200b')}</div>
-                        </div>`;
-                    }
-                });
-                embedHTML += '</div>';
-            }
-            
-            // Thumbnail
-            if (embed.thumbnail && embed.thumbnail.url) {
-                const thumbnailUrl = replaceVarsInUrl(embed.thumbnail.url);
-                embedHTML += `<div class="discord-embed-thumbnail"><img src="${thumbnailUrl}" alt="Thumbnail" onerror="this.parentElement.style.display='none'"></div>`;
-            }
-            
-            // Image
-            if (embed.image && embed.image.url) {
-                const imageUrl = replaceVarsInUrl(embed.image.url);
-                embedHTML += `<div class="discord-embed-image"><img src="${imageUrl}" alt="Embed Image" onerror="this.parentElement.style.display='none'"></div>`;
-            }
-            
-            // Footer
-            if (embed.footer && embed.footer.text) {
-                embedHTML += '<div class="discord-embed-footer">';
-                if (embed.footer.icon_url) {
-                    const footerIconUrl = replaceVarsInUrl(embed.footer.icon_url);
-                    embedHTML += `<img src="${footerIconUrl}" alt="Footer" class="discord-embed-footer-icon" onerror="this.style.display='none'">`;
-                }
-                embedHTML += `<span>${replaceVars(embed.footer.text)}</span>`;
-                embedHTML += '</div>';
-            }
-            
-            embedHTML += '</div>';
-            previewEmbed.innerHTML = embedHTML;
-            previewEmbed.style.display = 'block';
-        } else if (previewEmbed) {
-            previewEmbed.style.display = 'none';
         }
     }
     
@@ -2571,11 +2055,9 @@ document.addEventListener('DOMContentLoaded', async function() {
         // Edit message buttons
         const editJoinBtn = document.getElementById('edit-join-message');
         const editLeaveBtn = document.getElementById('edit-leave-message');
-        const editTiktokLiveBtn = document.getElementById('edit-tiktok-live-message');
         
         console.log('📌 Botão join encontrado:', !!editJoinBtn);
         console.log('📌 Botão leave encontrado:', !!editLeaveBtn);
-        console.log('📌 Botão tiktok-live encontrado:', !!editTiktokLiveBtn);
         
         if (editJoinBtn) {
             editJoinBtn.addEventListener('click', (e) => {
@@ -2592,15 +2074,6 @@ document.addEventListener('DOMContentLoaded', async function() {
                 e.stopPropagation();
                 console.log('🖱️ Clique no botão edit-leave-message');
                 openMessageEditModal('leave');
-            });
-        }
-
-        if (editTiktokLiveBtn) {
-            editTiktokLiveBtn.addEventListener('click', (e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                console.log('🖱️ Clique no botão edit-tiktok-live-message');
-                openMessageEditModal('tiktok-live');
             });
         }
         
