@@ -764,6 +764,7 @@ document.addEventListener('DOMContentLoaded', async function() {
         // Refresh channels buttons
         const refreshBtn = document.getElementById('refresh-channels');
         const refreshBtnLeave = document.getElementById('refresh-channels-leave');
+        const refreshServerDataBtn = document.getElementById('refresh-server-data');
         
         if (refreshBtn) {
             refreshBtn.addEventListener('click', async () => {
@@ -788,6 +789,52 @@ document.addEventListener('DOMContentLoaded', async function() {
                     refreshBtn.disabled = false;
                     refreshBtn.innerHTML = '<i class="fas fa-sync-alt"></i>';
                     showNotification('✅ Canais atualizados!', 'success');
+                }, 2000);
+            });
+        }
+
+        if (refreshServerDataBtn) {
+            refreshServerDataBtn.addEventListener('click', async () => {
+                refreshServerDataBtn.disabled = true;
+                refreshServerDataBtn.innerHTML = '<i class=\"fas fa-spinner fa-spin\"></i>';
+
+                try {
+                    await Promise.allSettled([
+                        fetch(`${CONFIG.API_BASE_URL}/api/bot/request-channels`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            credentials: 'include',
+                            body: JSON.stringify({ guildId })
+                        }),
+                        fetch(`${CONFIG.API_BASE_URL}/api/bot/request-roles`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            credentials: 'include',
+                            body: JSON.stringify({ guildId })
+                        }),
+                        fetch(`${CONFIG.API_BASE_URL}/api/bot/request-emojis`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            credentials: 'include',
+                            body: JSON.stringify({ guildId })
+                        })
+                    ]);
+                } catch (error) {
+                    console.error('Erro ao solicitar atualização do servidor:', error);
+                }
+
+                // aguarda um pouco e recarrega apenas o que for necessário (lazy)
+                setTimeout(async () => {
+                    try {
+                        await loadGuildChannels(true);
+                        guildRoles = []; // força reload sob demanda
+                        guildEmojis = []; // força reload sob demanda
+                    } catch (e) {
+                        console.warn('Erro ao recarregar dados após refresh:', e?.message);
+                    }
+                    refreshServerDataBtn.disabled = false;
+                    refreshServerDataBtn.innerHTML = '<i class=\"fas fa-rotate\"></i>';
+                    showNotification('✅ Atualização solicitada! (canais/cargos/emojis)', 'success');
                 }, 2000);
             });
         }

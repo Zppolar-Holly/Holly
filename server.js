@@ -7,6 +7,7 @@ const axios = require('axios');
 require('dotenv').config();
 
 const discordAuth = require('./server/auth');
+const redisCache = require('./server/redisCache');
 const dataStore = require('./server/dataStore');
 
 // Owner ID (same as in auth.js)
@@ -146,6 +147,20 @@ app.get('/api/bootstrap', discordAuth.authenticateToken, async (req, res) => {
         const userId = req.user?.user_id;
         if (!userId) return res.status(401).json({ error: 'Não autorizado' });
 
+        // Lock por usuário: impede chamadas paralelas (burst do frontend)
+        const lockKey = `holly:lock:bootstrap:${userId}`;
+        const locked = await redisCache.cacheSetNx(lockKey, String(Date.now()), 15);
+        if (!locked) {
+            return res.status(429).json({ error: 'Bootstrap em andamento. Aguarde.' });
+        }
+
+        // Rate limit leve por usuário (antes da fila global)
+        const rlKey = `holly:rl:bootstrap:${userId}:${Math.floor(Date.now() / 2_000)}`; // 1 a cada ~2s
+        const n = await redisCache.cacheIncr(rlKey, 3);
+        if (n && n > 1) {
+            return res.status(429).json({ error: 'Muitas chamadas. Aguarde.' });
+        }
+
         const [admin, bundle] = await Promise.all([
             getAdminStatus(userId),
             discordAuth.getBootstrapBundle(req)
@@ -162,6 +177,11 @@ app.get('/api/bootstrap', discordAuth.authenticateToken, async (req, res) => {
         if (error.code === 401) {
             return res.status(401).json({ error: error.message || 'Sessão expirada' });
         }
+        if (error.code === 'DISCORD_EMERGENCY' || error.code === 'DISCORD_PAUSED') {
+            const sec = error.retry_after || 30;
+            res.set('Retry-After', String(sec));
+            return res.status(503).json({ error: 'Discord temporariamente indisponivel', retry_after: sec, mode: error.code });
+        }
         if (error.response?.status === 429) {
             const discordGateway = require('./server/discordGateway');
             const sec = discordGateway.parseRetryAfterSeconds(error.response);
@@ -169,6 +189,11 @@ app.get('/api/bootstrap', discordAuth.authenticateToken, async (req, res) => {
             return res.status(503).json({ error: 'Discord rate limit', retry_after: sec });
         }
         return res.status(500).json({ error: 'Erro ao carregar dados iniciais' });
+    } finally {
+        const userId = req.user?.user_id;
+        if (userId) {
+            await redisCache.cacheDel(`holly:lock:bootstrap:${userId}`);
+        }
     }
 });
 
@@ -466,9 +491,9 @@ app.get('/api/server/:guildId/channels', discordAuth.authenticateToken, checkSer
             }
             
             // Check database cache
-            if (useDatabase && db && db.getGuildCache) {
-                const dbChannels = await db.getGuildCache(guildId, 'channels');
-                if (dbChannels && dbChannels.length > 0) {
+            if (useDatabase && db && db.getGuildCacheMeta) {
+                const { data: dbChannels, updated_at } = await db.getGuildCacheMeta(guildId, 'channels');
+                if (dbChannels && dbChannels.length > 0 && updated_at && (Date.now() - updated_at) < CHANNELS_CACHE_TTL) {
                     const textChannels = dbChannels
                         .filter(ch => ch.isText || ch.type === 0 || ch.type === 5)
                         .map(ch => ({ id: ch.id, name: ch.name, type: ch.type }));
@@ -481,87 +506,23 @@ app.get('/api/server/:guildId/channels', discordAuth.authenticateToken, checkSer
                     return res.json(textChannels);
                 }
             }
-            
-            console.log(`⚠️ Canais não encontrados no cache. Usando token do usuário como fallback...`);
-            // Note: Bot should send channels periodically, but if not in cache, we'll try user token as fallback
-        }
 
-        // Fallback: try with user token (required when bot runs separately and cache is empty)
-        try {
-            let token = await discordAuth.getValidAccessToken(req.user.user_id);
-            if (!token) {
-                console.warn('⚠️ Token do usuário não disponível para buscar canais');
-            } else {
-                // Try to fetch channels
-                try {
-                    const channelsRes = await axios.get(`https://discord.com/api/guilds/${guildId}/channels`, {
-                        headers: { Authorization: `Bearer ${token}` },
-                        timeout: 10000
-                    });
-                    const textChannels = channelsRes.data
-                        .filter(ch => ch.type === 0 || ch.type === 5) // TEXT_CHANNEL or NEWS_CHANNEL
-                        .map(ch => ({ id: ch.id, name: ch.name, type: ch.type }));
-                    
-                    console.log(`✅ Canais carregados via token do usuário: ${textChannels.length} canais`);
-                    return res.json(textChannels);
-                } catch (apiErr) {
-                    // If it's a 401, try to refresh token and retry
-                    if (apiErr.response && apiErr.response.status === 401) {
-                        console.warn('⚠️ Token do usuário expirado ou inválido (401) - tentando renovar...');
-                        
-                        // Try to get a fresh token (getValidAccessToken handles refresh automatically)
-                        const newToken = await discordAuth.getValidAccessToken(req.user.user_id);
-                        if (newToken && newToken !== token) {
-                            // Token was refreshed, retry request
-                            console.log('🔄 Token renovado automaticamente, tentando novamente...');
-                            try {
-                                const retryRes = await axios.get(`https://discord.com/api/guilds/${guildId}/channels`, {
-                                    headers: { Authorization: `Bearer ${newToken}` },
-                                    timeout: 10000
-                                });
-                                const textChannels = retryRes.data
-                                    .filter(ch => ch.type === 0 || ch.type === 5)
-                                    .map(ch => ({ id: ch.id, name: ch.name, type: ch.type }));
-                                
-                                console.log(`✅ Canais carregados após renovação: ${textChannels.length} canais`);
-                                return res.json(textChannels);
-                            } catch (retryErr) {
-                                console.warn('⚠️ Falha ao buscar canais mesmo após renovar token:', retryErr.message);
-                            }
-                        }
-                        
-                        // Try bot client one more time if available (unlikely but worth trying)
-                        if (botClient && botClient.guilds && botClient.guilds.cache) {
-                            console.log('   Tentando usar bot client como fallback...');
-                            const guild = botClient.guilds.cache.get(guildId);
-                            if (guild && guild.channels && guild.channels.cache) {
-                                const channels = Array.from(guild.channels.cache.values())
-                                    .filter(ch => ch && ch.isTextBased && ch.isTextBased())
-                                    .map(ch => ({ id: ch.id, name: ch.name, type: ch.type }));
-                                console.log(`✅ Canais carregados via bot client (fallback): ${channels.length} canais`);
-                                return res.json(channels);
-                            }
-                        }
-                        
-                        // Return empty array - user needs to refresh the page to get new token
-                        console.warn('   Retornando lista vazia. O usuário precisa atualizar a página para obter novo token.');
-                    } else {
-                        throw apiErr; // Re-throw if not 401
-                    }
+            // Cache vazio/expirado: pedir para o bot sincronizar sob demanda e retornar 202
+            try {
+                channelsCache.delete(guildId);
+                if (botClient && botClient.sendChannelsToWebsite) {
+                    await botClient.sendChannelsToWebsite(guildId);
                 }
+            } catch (e) {
+                console.warn('Falha ao solicitar sync de canais:', e.message);
             }
-        } catch (err) {
-            if (err.code === 'ECONNABORTED') {
-                console.warn('⚠️ Timeout ao buscar canais com token do usuário');
-            } else if (err.response && err.response.status !== 401) {
-                // Only log if not 401 (already handled above)
-                console.error('Erro ao buscar canais com token do usuário:', err.message || err);
-            }
+
+            res.status(202).json({ pending: true, message: 'Canais em atualização. Tente novamente em alguns segundos.' });
+            return;
         }
 
-        // If both methods fail, return empty array (user can refresh)
-        console.warn('⚠️ Não foi possível carregar canais. Retornando lista vazia.');
-        res.json([]);
+        // Se chegou aqui e não retornou, não tem canais disponíveis
+        res.status(202).json({ pending: true, message: 'Canais indisponíveis no momento. Atualize manualmente.' });
     } catch (error) {
         console.error('Erro ao buscar canais:', error);
         res.status(500).json({ error: 'Erro ao buscar canais' });
@@ -668,8 +629,30 @@ app.get('/api/server/:guildId/roles', discordAuth.authenticateToken, checkServer
                 console.log(`✅ Cargos carregados do cache (enviados pelo bot): ${roles.length} cargos`);
                 return res.json(roles);
             }
+
+            // Check database cache
+            if (useDatabase && db && db.getGuildCacheMeta) {
+                const { data: dbRoles, updated_at } = await db.getGuildCacheMeta(guildId, 'roles');
+                if (dbRoles && dbRoles.length > 0 && updated_at && (Date.now() - updated_at) < ROLES_CACHE_TTL) {
+                    const roles = dbRoles
+                        .filter(role => role.id !== guildId)
+                        .map(role => ({ id: role.id, name: role.name }));
+                    rolesCache.set(guildId, { roles: dbRoles, timestamp: Date.now() });
+                    console.log(`✅ Cargos carregados do cache do banco de dados: ${roles.length} cargos`);
+                    return res.json(roles);
+                }
+            }
             
-            console.log(`⚠️ Cargos não encontrados no cache. Retornando lista vazia.`);
+            // Cache vazio/expirado: pedir sync sob demanda
+            try {
+                rolesCache.delete(guildId);
+                if (botClient && botClient.sendRolesToWebsite) {
+                    await botClient.sendRolesToWebsite(guildId);
+                }
+            } catch (e) {
+                console.warn('Falha ao solicitar sync de cargos:', e.message);
+            }
+            return res.status(202).json({ pending: true, message: 'Cargos em atualização. Tente novamente em alguns segundos.' });
         }
     } catch (error) {
         console.error('Erro ao buscar cargos:', error);
@@ -717,12 +700,38 @@ app.get('/api/server/:guildId/emojis', discordAuth.authenticateToken, checkServe
                 console.log(`✅ Emojis carregados do cache (enviados pelo bot): ${emojis.length} emojis`);
                 return res.json(emojis);
             }
+
+            // Check database cache
+            if (useDatabase && db && db.getGuildCacheMeta) {
+                const { data: dbEmojis, updated_at } = await db.getGuildCacheMeta(guildId, 'emojis');
+                if (dbEmojis && dbEmojis.length > 0 && updated_at && (Date.now() - updated_at) < EMOJIS_CACHE_TTL) {
+                    const emojis = dbEmojis.map(emoji => ({
+                        id: emoji.id,
+                        name: emoji.name,
+                        animated: emoji.animated,
+                        url: emoji.url || `https://cdn.discordapp.com/emojis/${emoji.id}.${emoji.animated ? 'gif' : 'png'}?size=64`,
+                        identifier: emoji.identifier || (emoji.animated ? `a:${emoji.name}:${emoji.id}` : `${emoji.name}:${emoji.id}`)
+                    }));
+                    emojisCache.set(guildId, { emojis: dbEmojis, timestamp: Date.now() });
+                    console.log(`✅ Emojis carregados do cache do banco de dados: ${emojis.length} emojis`);
+                    return res.json(emojis);
+                }
+            }
             
-            console.log(`⚠️ Emojis não encontrados no cache. Retornando lista vazia.`);
+            // Cache vazio/expirado: pedir sync sob demanda
+            try {
+                emojisCache.delete(guildId);
+                if (botClient && botClient.sendEmojisToWebsite) {
+                    await botClient.sendEmojisToWebsite(guildId);
+                }
+            } catch (e) {
+                console.warn('Falha ao solicitar sync de emojis:', e.message);
+            }
+            return res.status(202).json({ pending: true, message: 'Emojis em atualização. Tente novamente em alguns segundos.' });
         }
         
         // Return empty array if bot is not available and cache is empty
-        return res.json([]);
+        return res.status(202).json({ pending: true, message: 'Emojis indisponíveis no momento. Atualize manualmente.' });
     } catch (error) {
         console.error('Erro ao buscar emojis:', error);
         res.json([]);
@@ -862,8 +871,8 @@ const channelsCache = new Map();
 const rolesCache = new Map();
 const emojisCache = new Map();
 const CHANNELS_CACHE_TTL = 5 * 60 * 1000; // 5 minutes
-const ROLES_CACHE_TTL = 5 * 60 * 1000; // 5 minutes
-const EMOJIS_CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+const ROLES_CACHE_TTL = 10 * 60 * 1000; // 10 minutes
+const EMOJIS_CACHE_TTL = 30 * 60 * 1000; // 30 minutes
 
 // Endpoint for bot to send channels (protected with secret token)
 app.post('/api/bot/channels', express.json(), async (req, res) => {
@@ -912,7 +921,7 @@ app.post('/api/bot/request-channels', discordAuth.authenticateToken, async (req,
         // Clear cache to force refresh
         channelsCache.delete(guildId);
         
-        // If bot client is available, trigger immediate sync
+        // If bot client is available (mesmo processo), trigger immediate sync
         if (botClient && botClient.sendChannelsToWebsite) {
             try {
                 await botClient.sendChannelsToWebsite(guildId);
@@ -924,16 +933,84 @@ app.post('/api/bot/request-channels', discordAuth.authenticateToken, async (req,
                 console.warn('Erro ao solicitar canais do bot:', error.message);
             }
         }
-        
-        // Fallback: bot will sync on next cycle
-        res.json({ 
-            success: true, 
-            message: 'Solicitação enviada. Canais serão atualizados em breve.',
-            note: 'O bot sincroniza canais automaticamente a cada 2 minutos'
-        });
+
+        // Bot separado: chama API sob demanda do bot
+        const botUrl = process.env.BOT_API_URL;
+        const syncSecret = process.env.BOT_SYNC_SECRET || 'default_secret_change_me';
+        if (botUrl) {
+            try {
+                await axios.post(`${botUrl.replace(/\/$/, '')}/api/request-channels`, { secret: syncSecret, guildId }, { timeout: 5000 });
+            } catch (e) {
+                console.warn('Falha ao acionar bot (channels):', e.message);
+            }
+        }
+
+        res.json({ success: true, message: 'Solicitacao enviada. Canais serao atualizados em breve.' });
     } catch (error) {
         console.error('Erro ao solicitar canais:', error);
         res.status(500).json({ error: 'Erro ao solicitar canais' });
+    }
+});
+
+app.post('/api/bot/request-roles', discordAuth.authenticateToken, async (req, res) => {
+    const { guildId } = req.body;
+    if (!guildId) return res.status(400).json({ error: 'guildId é obrigatório' });
+
+    try {
+        rolesCache.delete(guildId);
+        if (botClient && botClient.sendRolesToWebsite) {
+            try {
+                await botClient.sendRolesToWebsite(guildId);
+                return res.json({ success: true, message: 'Cargos solicitados do bot com sucesso' });
+            } catch (error) {
+                console.warn('Erro ao solicitar cargos do bot:', error.message);
+            }
+        }
+        const botUrl = process.env.BOT_API_URL;
+        const syncSecret = process.env.BOT_SYNC_SECRET || 'default_secret_change_me';
+        if (botUrl) {
+            try {
+                await axios.post(`${botUrl.replace(/\/$/, '')}/api/request-roles`, { secret: syncSecret, guildId }, { timeout: 5000 });
+            } catch (e) {
+                console.warn('Falha ao acionar bot (roles):', e.message);
+            }
+        }
+
+        return res.json({ success: true, message: 'Solicitacao enviada. Cargos serao atualizados em breve.' });
+    } catch (error) {
+        console.error('Erro ao solicitar cargos:', error);
+        return res.status(500).json({ error: 'Erro ao solicitar cargos' });
+    }
+});
+
+app.post('/api/bot/request-emojis', discordAuth.authenticateToken, async (req, res) => {
+    const { guildId } = req.body;
+    if (!guildId) return res.status(400).json({ error: 'guildId é obrigatório' });
+
+    try {
+        emojisCache.delete(guildId);
+        if (botClient && botClient.sendEmojisToWebsite) {
+            try {
+                await botClient.sendEmojisToWebsite(guildId);
+                return res.json({ success: true, message: 'Emojis solicitados do bot com sucesso' });
+            } catch (error) {
+                console.warn('Erro ao solicitar emojis do bot:', error.message);
+            }
+        }
+        const botUrl = process.env.BOT_API_URL;
+        const syncSecret = process.env.BOT_SYNC_SECRET || 'default_secret_change_me';
+        if (botUrl) {
+            try {
+                await axios.post(`${botUrl.replace(/\/$/, '')}/api/request-emojis`, { secret: syncSecret, guildId }, { timeout: 5000 });
+            } catch (e) {
+                console.warn('Falha ao acionar bot (emojis):', e.message);
+            }
+        }
+
+        return res.json({ success: true, message: 'Solicitacao enviada. Emojis serao atualizados em breve.' });
+    } catch (error) {
+        console.error('Erro ao solicitar emojis:', error);
+        return res.status(500).json({ error: 'Erro ao solicitar emojis' });
     }
 });
 

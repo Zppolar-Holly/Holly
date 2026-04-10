@@ -853,6 +853,30 @@ async function getGuildCache(guildId, type) {
     }
 }
 
+async function getGuildCacheMeta(guildId, type) {
+    try {
+        const column = type === 'channels' ? 'channels' : type === 'roles' ? 'roles' : 'emojis';
+        const timestampColumn = `${column}_updated_at`;
+
+        const result = await pool.query(
+            `SELECT ${column} as data, ${timestampColumn} as updated_at FROM guild_cache WHERE guild_id = $1`,
+            [guildId]
+        );
+
+        if (result.rows.length === 0) {
+            return { data: [], updated_at: null };
+        }
+
+        const row = result.rows[0];
+        const data = row.data;
+        const updatedAt = row.updated_at ? row.updated_at.getTime() : null;
+        return { data: Array.isArray(data) ? data : [], updated_at: updatedAt };
+    } catch (error) {
+        console.error(`Erro ao buscar cache meta ${type}:`, error);
+        return { data: [], updated_at: null };
+    }
+}
+
 module.exports = {
     pool,
     initializeDatabase,
@@ -884,6 +908,7 @@ module.exports = {
     mergeSessionGuilds,
     deleteSession,
     updateGuildCache,
-    getGuildCache
+    getGuildCache,
+    getGuildCacheMeta
 };
 

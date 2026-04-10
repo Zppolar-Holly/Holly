@@ -168,7 +168,7 @@ async function callback(req, res) {
                 }),
                 { headers: { 'Content-Type': 'application/x-www-form-urlencoded' } }
             )
-        );
+        , { endpoint: '/oauth2/token', user_id: 'oauth_callback' });
 
         const { access_token, refresh_token, expires_in } = tokenResponse.data;
         const expiresAt = Date.now() + expires_in * 1000;
@@ -178,14 +178,14 @@ async function callback(req, res) {
                 headers: { Authorization: `Bearer ${access_token}` },
                 timeout: 10000
             })
-        );
+        , { endpoint: '/users/@me', user_id: 'oauth_callback' });
 
         const guildsRes = await discordGateway.enqueueDiscordTask(() =>
             axios.get('https://discord.com/api/users/@me/guilds', {
                 headers: { Authorization: `Bearer ${access_token}` },
                 timeout: 15000
             })
-        );
+        , { endpoint: '/users/@me/guilds', user_id: 'oauth_callback' });
 
         const userId = userRes.data.id;
         await persistAfterOAuth(userId, access_token, refresh_token, expiresAt, userRes.data, guildsRes.data);
@@ -230,7 +230,7 @@ async function refreshAccessToken(userId, session) {
                 }),
                 { headers: { 'Content-Type': 'application/x-www-form-urlencoded' } }
             )
-        );
+        , { endpoint: '/oauth2/token', user_id: String(userId), reason: 'refresh_token' });
 
         const { access_token, refresh_token, expires_in } = tokenResponse.data;
         const expiresAt = Date.now() + expires_in * 1000;
@@ -304,7 +304,7 @@ async function loadProfileFromDiscord(userId, accessToken) {
             headers: { Authorization: `Bearer ${accessToken}` },
             timeout: 10000
         })
-    );
+    , { endpoint: '/users/@me', user_id: String(userId) });
     const profile = userRes.data;
     const now = Date.now();
 
@@ -369,7 +369,7 @@ async function loadGuildsFromDiscord(userId, accessToken) {
             headers: { Authorization: `Bearer ${accessToken}` },
             timeout: 15000
         })
-    );
+    , { endpoint: '/users/@me/guilds', user_id: String(userId) });
     const guilds = guildsRes.data;
     const now = Date.now();
 
@@ -494,6 +494,10 @@ async function getBootstrapBundle(req) {
             guilds
         };
     } catch (err) {
+        // Modo emergência/pause: não insiste em bater no Discord — deixa o caller responder com cache/stale
+        if (err.code === 'DISCORD_EMERGENCY' || err.code === 'DISCORD_PAUSED') {
+            throw err;
+        }
         if (err.response && err.response.status === 401) {
             if (useDatabase && db && db.deleteSession) {
                 await db.deleteSession(userId);

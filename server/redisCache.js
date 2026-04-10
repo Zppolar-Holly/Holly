@@ -65,8 +65,38 @@ async function cacheDel(key) {
     }
 }
 
+async function cacheSetNx(key, value, ttlSeconds) {
+    const r = getClient();
+    if (!r) return false;
+    try {
+        if (r.status !== 'ready') await r.connect().catch(() => {});
+        const args = ttlSeconds > 0 ? ['PX', String(ttlSeconds * 1000)] : [];
+        const res = await r.set(key, value, ...args, 'NX');
+        return res === 'OK';
+    } catch {
+        return false;
+    }
+}
+
+async function cacheIncr(key, ttlSeconds) {
+    const r = getClient();
+    if (!r) return null;
+    try {
+        if (r.status !== 'ready') await r.connect().catch(() => {});
+        const v = await r.incr(key);
+        if (ttlSeconds > 0 && v === 1) {
+            await r.expire(key, ttlSeconds);
+        }
+        return v;
+    } catch {
+        return null;
+    }
+}
+
 module.exports = {
     cacheGet,
     cacheSet,
-    cacheDel
+    cacheDel,
+    cacheSetNx,
+    cacheIncr
 };

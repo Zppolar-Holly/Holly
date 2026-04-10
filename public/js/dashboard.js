@@ -350,9 +350,17 @@ document.addEventListener('DOMContentLoaded', async function() {
     }
 
     // Gerenciamento de autenticação (totalmente atualizado)
+    let bootstrapPromise = null;
     async function checkAuth() {
         try {
-            const bootstrapRes = await fetch(`${CONFIG.API_BASE_URL}/api/bootstrap`, { credentials: 'include' });
+            if (!bootstrapPromise) {
+                bootstrapPromise = fetch(`${CONFIG.API_BASE_URL}/api/bootstrap`, { credentials: 'include' })
+                    .finally(() => {
+                        // permite novo bootstrap após terminar (sucesso ou erro)
+                        bootstrapPromise = null;
+                    });
+            }
+            const bootstrapRes = await bootstrapPromise;
 
             if (!bootstrapRes.ok) {
                 if (bootstrapRes.status === 401) throw new Error('Não autorizado');
