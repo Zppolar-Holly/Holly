@@ -122,8 +122,18 @@ async function callback(req, res) {
 
         return res.redirect(`${FRONTEND_URL}/dashboard`);
     } catch (err) {
-        console.error('Erro no callback:', err.response?.data || err.message);
-        return res.redirect(`${FRONTEND_URL}/dashboard?error=auth_failed`);
+        const discordErr = err.response?.data;
+        const reason =
+            discordErr?.error_description ||
+            discordErr?.error ||
+            err.message ||
+            'unknown';
+
+        // Não inclui tokens/segredos; só a razão (ex: invalid_grant, redirect_uri mismatch).
+        console.error('Erro no callback:', discordErr || err.message);
+        return res.redirect(
+            `${FRONTEND_URL}/dashboard?error=auth_failed&reason=${encodeURIComponent(String(reason).slice(0, 200))}`
+        );
     }
 }
 
