@@ -32,6 +32,35 @@ function getCookieOptions() {
     };
 }
 
+function sleep(ms) {
+    return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+async function discordRequest(requestFn, { maxRetries = 3 } = {}) {
+    let attempt = 0;
+    while (true) {
+        try {
+            return await requestFn();
+        } catch (err) {
+            const status = err?.response?.status;
+            if (status !== 429 || attempt >= maxRetries) throw err;
+
+            // Discord sends Retry-After (seconds) on 429 sometimes.
+            const retryAfterHeader = err.response?.headers?.['retry-after'];
+            const retryAfterSeconds = retryAfterHeader ? Number(retryAfterHeader) : NaN;
+
+            // Fallback exponential-ish backoff (ms)
+            const backoffMs = Number.isFinite(retryAfterSeconds)
+                ? Math.min(Math.max(retryAfterSeconds * 1000, 1000), 15000)
+                : Math.min(1000 * Math.pow(2, attempt), 15000);
+
+            attempt += 1;
+            console.warn(`⏳ Rate limit (429) do Discord. Tentativa ${attempt}/${maxRetries} em ${backoffMs}ms...`);
+            await sleep(backoffMs);
+        }
+    }
+}
+
 // Try to use database for sessions, fallback to Map
 let db = null;
 let useDatabase = false;
@@ -84,23 +113,27 @@ async function callback(req, res) {
             return res.redirect(`${FRONTEND_URL}/dashboard?error=no_code`);
         }
 
-        const tokenResponse = await axios.post(
-            'https://discord.com/api/oauth2/token',
-            new URLSearchParams({
-                client_id: CLIENT_ID,
-                client_secret: CLIENT_SECRET,
-                grant_type: 'authorization_code',
-                code,
-                redirect_uri: REDIRECT_URI
-            }),
-            { headers: { 'Content-Type': 'application/x-www-form-urlencoded' } }
+        const tokenResponse = await discordRequest(() =>
+            axios.post(
+                'https://discord.com/api/oauth2/token',
+                new URLSearchParams({
+                    client_id: CLIENT_ID,
+                    client_secret: CLIENT_SECRET,
+                    grant_type: 'authorization_code',
+                    code,
+                    redirect_uri: REDIRECT_URI
+                }),
+                { headers: { 'Content-Type': 'application/x-www-form-urlencoded' } }
+            )
         );
 
         const { access_token, refresh_token, expires_in } = tokenResponse.data;
 
-        const userRes = await axios.get('https://discord.com/api/users/@me', {
-            headers: { Authorization: `Bearer ${access_token}` }
-        });
+        const userRes = await discordRequest(() =>
+            axios.get('https://discord.com/api/users/@me', {
+                headers: { Authorization: `Bearer ${access_token}` }
+            })
+        );
 
         const userId = userRes.data.id;
         const expiresAt = Date.now() + expires_in * 1000;
@@ -123,10 +156,11 @@ async function callback(req, res) {
         return res.redirect(`${FRONTEND_URL}/dashboard`);
     } catch (err) {
         const discordErr = err.response?.data;
+        const status = err.response?.status;
         const reason =
             discordErr?.error_description ||
             discordErr?.error ||
-            err.message ||
+            (status === 429 ? 'rate_limited_429' : err.message) ||
             'unknown';
 
         // Não inclui tokens/segredos; só a razão (ex: invalid_grant, redirect_uri mismatch).
@@ -139,15 +173,17 @@ async function callback(req, res) {
 
 async function refreshAccessToken(userId, session) {
     try {
-        const tokenResponse = await axios.post(
-            'https://discord.com/api/oauth2/token',
-            new URLSearchParams({
-                client_id: CLIENT_ID,
-                client_secret: CLIENT_SECRET,
-                grant_type: 'refresh_token',
-                refresh_token: session.refresh_token
-            }),
-            { headers: { 'Content-Type': 'application/x-www-form-urlencoded' } }
+        const tokenResponse = await discordRequest(() =>
+            axios.post(
+                'https://discord.com/api/oauth2/token',
+                new URLSearchParams({
+                    client_id: CLIENT_ID,
+                    client_secret: CLIENT_SECRET,
+                    grant_type: 'refresh_token',
+                    refresh_token: session.refresh_token
+                }),
+                { headers: { 'Content-Type': 'application/x-www-form-urlencoded' } }
+            )
         );
 
         const { access_token, refresh_token, expires_in } = tokenResponse.data;
@@ -255,10 +291,12 @@ async function getUserData(req, res) {
             return res.status(401).json({ error: 'Sessão expirada. Faça login novamente.' });
         }
 
-        const userRes = await axios.get('https://discord.com/api/users/@me', {
-            headers: { Authorization: `Bearer ${token}` },
-            timeout: 10000
-        });
+        const userRes = await discordRequest(() =>
+            axios.get('https://discord.com/api/users/@me', {
+                headers: { Authorization: `Bearer ${token}` },
+                timeout: 10000
+            })
+        );
 
         const userId = userRes.data.id;
         const badges = getUserBadges(userId);
@@ -294,9 +332,11 @@ async function getUserGuilds(req, res) {
             return res.status(401).json({ error: 'Sessão expirada' });
         }
 
-        const guildsRes = await axios.get('https://discord.com/api/users/@me/guilds', {
-            headers: { Authorization: `Bearer ${token}` }
-        });
+        const guildsRes = await discordRequest(() =>
+            axios.get('https://discord.com/api/users/@me/guilds', {
+                headers: { Authorization: `Bearer ${token}` }
+            })
+        );
 
         return res.json(guildsRes.data);
     } catch (err) {
