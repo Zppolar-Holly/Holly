@@ -2466,7 +2466,7 @@ html, body {
 /* Override for server config page */
 .dashboard-container:has(.server-config-page) {
     flex-direction: column;
-    padding: 2rem;
+    padding: 0;
 }
 
 .dashboard-sidebar {
@@ -2610,7 +2610,7 @@ html, body {
     margin-bottom: 0;
     position: sticky;
     top: 70px; /* Altura da navbar */
-    z-index: 1001; /* Acima da navbar (z-index: 1000) */
+    z-index: 9999; /* Muito alto para ficar acima de tudo */
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
 }
 

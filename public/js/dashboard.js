@@ -8,12 +8,10 @@
 
 document.addEventListener('DOMContentLoaded', async function() {
     // Configurações atualizadas
-    const runtimeOrigin = window.location.origin || '';
-    const isLocalhost = runtimeOrigin.includes('localhost') || runtimeOrigin.includes('127.0.0.1');
-    const apiBaseFromWindow = window.__HOLLY_API__ || 'https://dash-holly.com';
+    // Same origin as the page so session cookies (holly_token) are sent. Override only if API is on another host.
     const CONFIG = {
         CLIENT_ID: '1069819161057968218',
-        API_BASE_URL: isLocalhost ? 'http://localhost:3000' : apiBaseFromWindow,
+        API_BASE_URL: window.__HOLLY_API__ || window.location.origin,
         DEFAULT_AVATAR: 'https://cdn.discordapp.com/embed/avatars/0.png',
         THEME_KEY: 'holly_theme',
         TOKEN_EXPIRATION_CHECK: true

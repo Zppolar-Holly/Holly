@@ -9,6 +9,29 @@ const REDIRECT_URI = `${BASE_URL}/auth/discord/callback`;
 const FRONTEND_URL = process.env.FRONTEND_URL || BASE_URL;
 const JWT_SECRET = process.env.JWT_SECRET || 'uma_chave_bem_segura';
 
+function getCookieOptions() {
+    const isProduction = process.env.NODE_ENV === 'production';
+
+    let sameOrigin = true;
+    try {
+        sameOrigin = new URL(BASE_URL).origin === new URL(FRONTEND_URL).origin;
+    } catch {
+        sameOrigin = true;
+    }
+
+    // Cross-site cookies (frontend != API) require SameSite=None + Secure.
+    const sameSite = sameOrigin ? 'lax' : 'none';
+    const secure = sameOrigin ? isProduction : true;
+
+    return {
+        httpOnly: true,
+        secure,
+        sameSite,
+        path: '/',
+        maxAge: 30 * 24 * 60 * 60 * 1000 // 30 dias
+    };
+}
+
 // Try to use database for sessions, fallback to Map
 let db = null;
 let useDatabase = false;
@@ -95,12 +118,7 @@ async function callback(req, res) {
 
         const jwtToken = jwt.sign({ user_id: userId, username: userRes.data.username }, JWT_SECRET, { expiresIn: '30d' });
 
-        res.cookie('holly_token', jwtToken, {
-            httpOnly: true,
-            secure: process.env.NODE_ENV === 'production',
-            sameSite: 'lax',
-            maxAge: 30 * 24 * 60 * 60 * 1000 // 30 dias
-        });
+        res.cookie('holly_token', jwtToken, getCookieOptions());
 
         return res.redirect(`${FRONTEND_URL}/dashboard`);
     } catch (err) {
@@ -181,12 +199,9 @@ async function logout(req, res) {
         }
     }
 
-    res.clearCookie('holly_token', {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
-        sameSite: 'lax',
-        path: '/'
-    });
+    // Use the same cookie attributes to guarantee deletion in all browsers.
+    const { httpOnly, secure, sameSite, path } = getCookieOptions();
+    res.clearCookie('holly_token', { httpOnly, secure, sameSite, path });
 
     return res.status(200).json({ message: 'Logout realizado com sucesso' });
 }
