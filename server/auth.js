@@ -36,7 +36,7 @@ function sleep(ms) {
     return new Promise(resolve => setTimeout(resolve, ms));
 }
 
-async function discordRequest(requestFn, { maxRetries = 3 } = {}) {
+async function discordRequest(requestFn, { maxRetries = 8 } = {}) {
     let attempt = 0;
     while (true) {
         try {
@@ -51,8 +51,8 @@ async function discordRequest(requestFn, { maxRetries = 3 } = {}) {
 
             // Fallback exponential-ish backoff (ms)
             const backoffMs = Number.isFinite(retryAfterSeconds)
-                ? Math.min(Math.max(retryAfterSeconds * 1000, 1000), 15000)
-                : Math.min(1000 * Math.pow(2, attempt), 15000);
+                ? Math.min(Math.max(retryAfterSeconds * 1000, 1000), 60000)
+                : Math.min(1000 * Math.pow(2, attempt), 60000);
 
             attempt += 1;
             console.warn(`⏳ Rate limit (429) do Discord. Tentativa ${attempt}/${maxRetries} em ${backoffMs}ms...`);
@@ -157,10 +157,14 @@ async function callback(req, res) {
     } catch (err) {
         const discordErr = err.response?.data;
         const status = err.response?.status;
+        const retryAfterHeader = err.response?.headers?.['retry-after'];
+        const retryAfterSeconds = retryAfterHeader ? Number(retryAfterHeader) : null;
         const reason =
             discordErr?.error_description ||
             discordErr?.error ||
-            (status === 429 ? 'rate_limited_429' : err.message) ||
+            (status === 429
+                ? `rate_limited_429${Number.isFinite(retryAfterSeconds) ? `_retry_after_${retryAfterSeconds}s` : ''}`
+                : err.message) ||
             'unknown';
 
         // Não inclui tokens/segredos; só a razão (ex: invalid_grant, redirect_uri mismatch).
