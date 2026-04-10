@@ -90,6 +90,88 @@ let botClient = null;
 app.get('/api/user', discordAuth.authenticateToken, discordAuth.getUserData);
 app.get('/api/user/guilds', discordAuth.authenticateToken, discordAuth.getUserGuilds);
 
+function getStatsPayload() {
+    // Try to get real stats from bot, fallback to mock data
+    if (botClient && typeof botClient.getStats === 'function') {
+        try {
+            return botClient.getStats();
+        } catch (error) {
+            console.error('Erro ao obter estatísticas do bot:', error);
+        }
+    }
+
+    // Fallback to mock data if bot not available
+    const now = new Date();
+    const hourly = Array.from({ length: 24 }, (_, index) => {
+        const base = 200 + ((index * 37) % 150);
+        return base + Math.floor(Math.random() * 50);
+    });
+
+    return {
+        uptime: 99.9,
+        commands_24h: hourly.reduce((acc, value) => acc + value, 0),
+        unique_users: 1245,
+        command_categories: {
+            moderation: 42,
+            fun: 21,
+            utility: 18,
+            music: 14,
+            other: 5
+        },
+        commands_by_hour: hourly,
+        generated_at: now.toISOString()
+    };
+}
+
+async function getAdminStatus(userId) {
+    if (!userId) return { isAdmin: false, isOwner: false };
+
+    if (userId === OWNER_ID) {
+        return { isAdmin: true, isOwner: true };
+    }
+
+    let isAdmin = false;
+    if (useDatabase && db && db.isAdministrator) {
+        isAdmin = await db.isAdministrator(userId);
+    } else if (dataStore.isAdministrator) {
+        isAdmin = await dataStore.isAdministrator(userId);
+    }
+
+    return { isAdmin, isOwner: false };
+}
+
+// Bootstrap: 1 chamada no front; backend monta user + guilds (cache + fila Discord)
+app.get('/api/bootstrap', discordAuth.authenticateToken, async (req, res) => {
+    try {
+        const userId = req.user?.user_id;
+        if (!userId) return res.status(401).json({ error: 'Não autorizado' });
+
+        const [admin, bundle] = await Promise.all([
+            getAdminStatus(userId),
+            discordAuth.getBootstrapBundle(req)
+        ]);
+
+        return res.json({
+            user: bundle.user,
+            guilds: bundle.guilds,
+            stats: getStatsPayload(),
+            admin
+        });
+    } catch (error) {
+        console.error('Erro no bootstrap:', error);
+        if (error.code === 401) {
+            return res.status(401).json({ error: error.message || 'Sessão expirada' });
+        }
+        if (error.response?.status === 429) {
+            const discordGateway = require('./server/discordGateway');
+            const sec = discordGateway.parseRetryAfterSeconds(error.response);
+            res.set('Retry-After', String(sec));
+            return res.status(503).json({ error: 'Discord rate limit', retry_after: sec });
+        }
+        return res.status(500).json({ error: 'Erro ao carregar dados iniciais' });
+    }
+});
+
 // Get global stats
 app.get('/api/stats', discordAuth.authenticateToken, (req, res) => {
     // Try to get real stats from bot, fallback to mock data

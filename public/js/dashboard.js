@@ -352,38 +352,21 @@ document.addEventListener('DOMContentLoaded', async function() {
     // Gerenciamento de autenticação (totalmente atualizado)
     async function checkAuth() {
         try {
-            const [userRes, guildsRes, statsRes, adminRes] = await Promise.all([
-                fetch(`${CONFIG.API_BASE_URL}/api/user`, { credentials: 'include' }),
-                fetch(`${CONFIG.API_BASE_URL}/api/user/guilds`, { credentials: 'include' }),
-                fetch(`${CONFIG.API_BASE_URL}/api/stats`, { credentials: 'include' }),
-                fetch(`${CONFIG.API_BASE_URL}/api/user/is-admin`, { credentials: 'include' }).catch(() => ({ ok: false }))
-            ]);
+            const bootstrapRes = await fetch(`${CONFIG.API_BASE_URL}/api/bootstrap`, { credentials: 'include' });
 
-            if (!userRes.ok) {
-                if (userRes.status === 401) {
-                    throw new Error('Não autorizado');
-                }
-                throw new Error(`HTTP error! status: ${userRes.status}`);
+            if (!bootstrapRes.ok) {
+                if (bootstrapRes.status === 401) throw new Error('Não autorizado');
+                throw new Error(`HTTP error! status: ${bootstrapRes.status}`);
             }
 
-            const userData = await userRes.json();
-            const guildsData = await guildsRes.json();
-            const statsData = await statsRes.json();
-            
-            // Check admin status
-            let isAdmin = false;
-            let isOwner = false;
-            if (adminRes.ok) {
-                const adminData = await adminRes.json();
-                isAdmin = adminData.isAdmin || false;
-                isOwner = adminData.isOwner || false;
-            } else {
-                // If endpoint fails, check if user is owner by ID
-                if (userData && userData.id === '909204567042981978') {
-                    isOwner = true;
-                    isAdmin = true;
-                }
-            }
+            const bootstrap = await bootstrapRes.json();
+            const userData = bootstrap.user;
+            const guildsData = bootstrap.guilds || [];
+            const statsData = bootstrap.stats || null;
+            const adminData = bootstrap.admin || {};
+
+            const isAdmin = adminData.isAdmin || false;
+            const isOwner = adminData.isOwner || false;
 
             STATE.user = userData;
             STATE.guilds = guildsData.filter(guild => guild.permissions & 0x20);
@@ -406,6 +389,7 @@ document.addEventListener('DOMContentLoaded', async function() {
             console.error('Authentication check failed:', error);
             showUnauthenticatedUI();
             
+            // Evita loop automático: não redireciona sozinho.
             if (error.message !== 'Não autorizado') {
                 showNotification('Erro ao verificar autenticação. Tente novamente.', 'error');
             }

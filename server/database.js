@@ -206,6 +206,11 @@ async function initializeDatabase() {
             ON user_sessions(expires_at)
         `);
 
+        await pool.query(`ALTER TABLE user_sessions ADD COLUMN IF NOT EXISTS profile_json JSONB`);
+        await pool.query(`ALTER TABLE user_sessions ADD COLUMN IF NOT EXISTS profile_cached_at TIMESTAMPTZ`);
+        await pool.query(`ALTER TABLE user_sessions ADD COLUMN IF NOT EXISTS guilds_json JSONB`);
+        await pool.query(`ALTER TABLE user_sessions ADD COLUMN IF NOT EXISTS guilds_cached_at TIMESTAMPTZ`);
+
         console.log('✅ Tabelas do banco de dados inicializadas');
         return true;
     } catch (error) {
@@ -666,7 +671,9 @@ async function getAllAdministrators() {
 async function getSession(userId) {
     try {
         const result = await pool.query(
-            'SELECT access_token, refresh_token, expires_at FROM user_sessions WHERE user_id = $1',
+            `SELECT access_token, refresh_token, expires_at,
+                    profile_json, profile_cached_at, guilds_json, guilds_cached_at
+             FROM user_sessions WHERE user_id = $1`,
             [userId]
         );
         
@@ -678,7 +685,11 @@ async function getSession(userId) {
         return {
             access_token: row.access_token,
             refresh_token: row.refresh_token,
-            expires_at: row.expires_at.getTime() // Convert to timestamp
+            expires_at: row.expires_at.getTime(),
+            profile_json: row.profile_json || null,
+            profile_cached_at: row.profile_cached_at ? row.profile_cached_at.getTime() : null,
+            guilds_json: row.guilds_json || null,
+            guilds_cached_at: row.guilds_cached_at ? row.guilds_cached_at.getTime() : null
         };
     } catch (error) {
         console.error('Erro ao buscar sessão:', error);
@@ -686,7 +697,8 @@ async function getSession(userId) {
     }
 }
 
-async function setSession(userId, accessToken, refreshToken, expiresAt) {
+/** Atualiza apenas tokens (refresh OAuth). Preserva profile_json / guilds_json. */
+async function updateSessionTokens(userId, accessToken, refreshToken, expiresAt) {
     try {
         await pool.query(
             `INSERT INTO user_sessions (user_id, access_token, refresh_token, expires_at, updated_at)
@@ -702,6 +714,64 @@ async function setSession(userId, accessToken, refreshToken, expiresAt) {
         return true;
     } catch (error) {
         console.error('Erro ao salvar sessão:', error);
+        return false;
+    }
+}
+
+/** Login OAuth: tokens + snapshot de perfil e guilds (uma vez por login). */
+async function upsertOAuthSession(userId, accessToken, refreshToken, expiresAt, profile, guilds) {
+    try {
+        await pool.query(
+            `INSERT INTO user_sessions (
+                user_id, access_token, refresh_token, expires_at,
+                profile_json, profile_cached_at, guilds_json, guilds_cached_at, updated_at
+            )
+             VALUES ($1, $2, $3, $4, $5::jsonb, CURRENT_TIMESTAMP, $6::jsonb, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+             ON CONFLICT (user_id)
+             DO UPDATE SET
+                 access_token = EXCLUDED.access_token,
+                 refresh_token = EXCLUDED.refresh_token,
+                 expires_at = EXCLUDED.expires_at,
+                 profile_json = EXCLUDED.profile_json,
+                 profile_cached_at = EXCLUDED.profile_cached_at,
+                 guilds_json = EXCLUDED.guilds_json,
+                 guilds_cached_at = EXCLUDED.guilds_cached_at,
+                 updated_at = CURRENT_TIMESTAMP`,
+            [userId, accessToken, refreshToken, new Date(expiresAt), JSON.stringify(profile), JSON.stringify(guilds)]
+        );
+        return true;
+    } catch (error) {
+        console.error('Erro ao salvar sessão OAuth:', error);
+        return false;
+    }
+}
+
+async function mergeSessionProfile(userId, profile) {
+    try {
+        await pool.query(
+            `UPDATE user_sessions
+             SET profile_json = $2::jsonb, profile_cached_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP
+             WHERE user_id = $1`,
+            [userId, JSON.stringify(profile)]
+        );
+        return true;
+    } catch (error) {
+        console.error('Erro ao atualizar profile_json:', error);
+        return false;
+    }
+}
+
+async function mergeSessionGuilds(userId, guilds) {
+    try {
+        await pool.query(
+            `UPDATE user_sessions
+             SET guilds_json = $2::jsonb, guilds_cached_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP
+             WHERE user_id = $1`,
+            [userId, JSON.stringify(guilds)]
+        );
+        return true;
+    } catch (error) {
+        console.error('Erro ao atualizar guilds_json:', error);
         return false;
     }
 }
@@ -808,7 +878,10 @@ module.exports = {
     removeAdministrator,
     getAllAdministrators,
     getSession,
-    setSession,
+    updateSessionTokens,
+    upsertOAuthSession,
+    mergeSessionProfile,
+    mergeSessionGuilds,
     deleteSession,
     updateGuildCache,
     getGuildCache
