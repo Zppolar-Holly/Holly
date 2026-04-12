@@ -1815,7 +1815,6 @@ document.addEventListener('DOMContentLoaded', async function() {
                 
                 // Update preview on main page
                 updateMainPreview(currentEditType);
-            }
             
             // Close modal
             closeMessageEditModal();
