@@ -10,6 +10,13 @@ const discordAuth = require('./server/auth');
 const redisCache = require('./server/redisCache');
 const dataStore = require('./server/dataStore');
 
+function redisEnabled() {
+    return Boolean(process.env.REDIS_URL);
+}
+
+// Lock in-memory quando nao ha Redis (cacheSetNx retorna false sem Redis e quebrava o bootstrap com 429)
+const bootstrapLocks = new Map(); // userId -> expiresAtMs
+
 // Owner ID (same as in auth.js)
 const OWNER_ID = '909204567042981978';
 
@@ -147,18 +154,27 @@ app.get('/api/bootstrap', discordAuth.authenticateToken, async (req, res) => {
         const userId = req.user?.user_id;
         if (!userId) return res.status(401).json({ error: 'Não autorizado' });
 
-        // Lock por usuário: impede chamadas paralelas (burst do frontend)
-        const lockKey = `holly:lock:bootstrap:${userId}`;
-        const locked = await redisCache.cacheSetNx(lockKey, String(Date.now()), 15);
-        if (!locked) {
-            return res.status(429).json({ error: 'Bootstrap em andamento. Aguarde.' });
-        }
+        // Lock + rate limit só com Redis; sem Redis, cacheSetNx/incr retornam false/null e geravam 429 falso
+        if (redisEnabled()) {
+            const lockKey = `holly:lock:bootstrap:${userId}`;
+            const locked = await redisCache.cacheSetNx(lockKey, String(Date.now()), 15);
+            if (!locked) {
+                return res.status(429).json({ error: 'Bootstrap em andamento. Aguarde.' });
+            }
 
-        // Rate limit leve por usuário (antes da fila global)
-        const rlKey = `holly:rl:bootstrap:${userId}:${Math.floor(Date.now() / 2_000)}`; // 1 a cada ~2s
-        const n = await redisCache.cacheIncr(rlKey, 3);
-        if (n && n > 1) {
-            return res.status(429).json({ error: 'Muitas chamadas. Aguarde.' });
+            const rlKey = `holly:rl:bootstrap:${userId}:${Math.floor(Date.now() / 2_000)}`;
+            const n = await redisCache.cacheIncr(rlKey, 3);
+            if (n && n > 1) {
+                await redisCache.cacheDel(lockKey);
+                return res.status(429).json({ error: 'Muitas chamadas. Aguarde.' });
+            }
+        } else {
+            const now = Date.now();
+            const until = bootstrapLocks.get(userId);
+            if (until && until > now) {
+                return res.status(429).json({ error: 'Bootstrap em andamento. Aguarde.' });
+            }
+            bootstrapLocks.set(userId, now + 15_000);
         }
 
         const [admin, bundle] = await Promise.all([
@@ -192,7 +208,11 @@ app.get('/api/bootstrap', discordAuth.authenticateToken, async (req, res) => {
     } finally {
         const userId = req.user?.user_id;
         if (userId) {
-            await redisCache.cacheDel(`holly:lock:bootstrap:${userId}`);
+            if (redisEnabled()) {
+                await redisCache.cacheDel(`holly:lock:bootstrap:${userId}`);
+            } else {
+                bootstrapLocks.delete(userId);
+            }
         }
     }
 });
