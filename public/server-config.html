@@ -90,6 +90,7 @@
                 </div>
             </div>
 
+            <div class="config-main-layout">
             <!-- Sidebar Navigation -->
             <div class="config-sidebar" id="configSidebar">
                 <div class="sidebar-header">
@@ -113,8 +114,6 @@
                     </a>
                 </nav>
             </div>
-
-            <div id="configSidebarBackdrop" class="config-sidebar-backdrop" aria-hidden="true"></div>
 
             <!-- Main Content Area -->
             <div class="config-content-wrapper">
@@ -156,6 +155,7 @@
                                 <small>O apelido que o bot terá neste servidor (máx. 32 caracteres)</small>
                             </div>
                         </div>
+                    </div>
 
                     <!-- Seção Sistema de Entrada/Saída -->
                     <div class="config-section" data-section="notifications" style="display: none;">
@@ -352,9 +352,11 @@
                         </div>
                     </div>
                 </div>
+                <div class="config-actions-bar">
+                    <button type="button" class="btn secondary-btn" id="cancel-btn">Voltar ao painel</button>
+                    <button type="button" class="btn primary-btn" id="save-btn"><i class="fas fa-save"></i> Salvar alterações</button>
+                </div>
             </div>
-        </div>
-    </main>
             </div>
         </div>
     </main>

@@ -557,6 +557,7 @@ document.addEventListener('DOMContentLoaded', async function() {
             return;
         }
 
+        if (!UI.saveBtn) return;
         UI.saveBtn.disabled = true;
         UI.saveBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Salvando...';
 
@@ -652,8 +653,10 @@ document.addEventListener('DOMContentLoaded', async function() {
             console.error('Erro ao salvar configurações:', error);
             showNotification('Erro ao salvar configurações', 'error');
         } finally {
-            UI.saveBtn.disabled = false;
-            UI.saveBtn.innerHTML = '<i class="fas fa-save"></i> Salvar Configurações';
+            if (UI.saveBtn) {
+                UI.saveBtn.disabled = false;
+                UI.saveBtn.innerHTML = '<i class="fas fa-save"></i> Salvar alterações';
+            }
         }
     }
 
@@ -967,44 +970,38 @@ document.addEventListener('DOMContentLoaded', async function() {
         const menuToggle = document.getElementById('menuToggle');
         const sidebar = document.getElementById('configSidebar');
         const sidebarClose = document.getElementById('sidebarClose');
-        const sidebarBackdrop = document.getElementById('configSidebarBackdrop');
-        const serverConfigPage = document.getElementById('serverConfigPage');
         const navItems = document.querySelectorAll('.nav-item');
+        const narrowNav = window.matchMedia('(max-width: 899px)');
         
         console.log(`   - Menu toggle: ${!!menuToggle}`);
         console.log(`   - Sidebar: ${!!sidebar}`);
         console.log(`   - Sidebar close: ${!!sidebarClose}`);
         console.log(`   - Nav items: ${navItems.length}`);
         
-        // Toggle sidebar
-        function setNavOpen(isOpen) {
-            if (serverConfigPage) {
-                serverConfigPage.classList.toggle('config-nav-open', isOpen);
-            }
-            if (sidebarBackdrop) {
-                sidebarBackdrop.setAttribute('aria-hidden', isOpen ? 'false' : 'true');
-            }
-            document.body.style.overflow = isOpen ? 'hidden' : '';
-        }
-
         function toggleSidebar() {
             console.log('🔄 Alternando sidebar...');
-            if (sidebar) {
+            if (sidebar && narrowNav.matches) {
                 sidebar.classList.toggle('active');
-                const on = sidebar.classList.contains('active');
-                setNavOpen(on);
-                console.log(`   - Sidebar ativa: ${on}`);
+                console.log(`   - Sidebar ativa: ${sidebar.classList.contains('active')}`);
             }
         }
         
-        // Close sidebar
         function closeSidebar() {
-            console.log('🔄 Fechando sidebar...');
-            if (sidebar) {
+            if (sidebar && narrowNav.matches) {
                 sidebar.classList.remove('active');
             }
-            setNavOpen(false);
         }
+
+        function syncSidebarLayout() {
+            if (!sidebar) return;
+            if (narrowNav.matches) {
+                sidebar.classList.remove('active');
+            } else {
+                sidebar.classList.add('active');
+            }
+        }
+        syncSidebarLayout();
+        narrowNav.addEventListener('change', syncSidebarLayout);
         
         // Show section
         function showSection(sectionName) {
@@ -1037,8 +1034,9 @@ document.addEventListener('DOMContentLoaded', async function() {
                     }
                 });
                 
-                // Fecha o menu apos escolher secao (conteudo fica visivel; evita header/sidebar sobrepostos)
-                closeSidebar();
+                if (narrowNav.matches) {
+                    closeSidebar();
+                }
             } else {
                 console.error(`   ❌ Seção "${sectionName}" não encontrada no DOM!`);
                 console.error(`   - Seções disponíveis:`, Array.from(allSections).map(s => s.getAttribute('data-section')));
@@ -1054,10 +1052,6 @@ document.addEventListener('DOMContentLoaded', async function() {
             sidebarClose.addEventListener('click', closeSidebar);
         }
 
-        if (sidebarBackdrop) {
-            sidebarBackdrop.addEventListener('click', closeSidebar);
-        }
-        
         // Nav item clicks
         navItems.forEach(item => {
             item.addEventListener('click', (e) => {

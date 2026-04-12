@@ -3536,42 +3536,27 @@ html, body {
     transform: scale(1.1);
 }
 
-/* ========== SERVER CONFIG SIDEBAR ========== */
+/* ========== SERVER CONFIG LAYOUT (sidebar no fluxo, sem overlay) ========== */
+.config-main-layout {
+    display: flex;
+    flex: 1;
+    min-height: 0;
+    width: 100%;
+    align-items: stretch;
+}
+
 .config-sidebar {
-    position: fixed;
-    left: -300px;
-    top: 70px; /* abaixo da navbar fixa */
-    height: calc(100vh - 70px);
-    height: calc(100dvh - 70px);
-    width: 280px;
+    position: relative;
+    flex: 0 0 260px;
+    width: 260px;
+    max-width: 100%;
     background: var(--card-bg);
     border-right: 1px solid var(--border-color);
-    z-index: 1200; /* acima do config-header (105) e da navbar (1000) */
-    transition: left 0.3s ease;
+    z-index: 1;
     overflow-y: auto;
-    box-shadow: 2px 0 10px rgba(0, 0, 0, 0.1);
-}
-
-.config-sidebar.active {
-    left: 0;
-}
-
-.config-sidebar-backdrop {
-    display: none;
-    position: fixed;
-    inset: 0;
-    z-index: 1150;
-    background: rgba(0, 0, 0, 0.35);
-    cursor: pointer;
-}
-
-.server-config-page.config-nav-open .config-sidebar-backdrop {
-    display: block;
-}
-
-.server-config-page.config-nav-open .config-sidebar.active {
-    z-index: 1250;
-    box-shadow: 4px 0 24px rgba(0, 0, 0, 0.18);
+    overflow-x: hidden;
+    box-shadow: none;
+    align-self: stretch;
 }
 
 .sidebar-header {
@@ -3660,21 +3645,80 @@ html, body {
 
 .config-content-wrapper {
     flex: 1;
+    min-width: 0;
     min-height: 0;
-    overflow-y: auto;
-    overflow-x: hidden;
-    margin-left: 0;
-    transition: margin-left 0.3s ease;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
     position: relative;
     z-index: 1;
 }
 
 .config-content {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    overflow-x: hidden;
     padding: 2rem;
     max-width: 1200px;
     margin: 0 auto;
     width: 100%;
     box-sizing: border-box;
+}
+
+.config-actions-bar {
+    flex-shrink: 0;
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 1rem 2rem;
+    background: var(--card-bg);
+    border-top: 1px solid var(--border-color);
+    box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.04);
+}
+
+@media (min-width: 900px) {
+    .menu-toggle-btn {
+        display: none !important;
+    }
+
+    .sidebar-close {
+        display: none !important;
+    }
+
+    .config-sidebar {
+        max-height: none !important;
+        opacity: 1 !important;
+    }
+
+    .config-sidebar.active {
+        max-height: none !important;
+    }
+}
+
+@media (max-width: 899px) {
+    .config-main-layout {
+        flex-direction: column;
+    }
+
+    .config-sidebar {
+        flex: 0 0 auto;
+        width: 100%;
+        border-right: none;
+        border-bottom: 1px solid var(--border-color);
+        max-height: 0;
+        opacity: 0;
+        overflow: hidden;
+        transition: max-height 0.35s ease, opacity 0.2s ease;
+    }
+
+    .config-sidebar.active {
+        max-height: 70vh;
+        opacity: 1;
+        overflow-y: auto;
+    }
 }
 
 .config-section {
@@ -3716,21 +3760,6 @@ html, body {
     margin: 0 0 1rem 0;
     font-size: 1.25rem;
     color: var(--text-color);
-}
-
-@media (max-width: 768px) {
-    .config-sidebar {
-        width: 100%;
-        max-width: 320px;
-        left: -100%;
-        top: 70px;
-        height: calc(100vh - 70px);
-        height: calc(100dvh - 70px);
-    }
-
-    .config-sidebar.active {
-        left: 0;
-    }
 }
 
 /* Embed Fields */
