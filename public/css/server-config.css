@@ -1,0 +1,617 @@
+/**
+ * Server configuration page — visual layer only.
+ * Loaded after dashboard.css; scoped with body:has(#serverConfigPage).
+ */
+
+body:has(#serverConfigPage) {
+    margin: 0;
+    min-height: 100vh;
+    min-height: 100dvh;
+    background: var(--bg-color);
+}
+
+body:has(#serverConfigPage) .dashboard-container:has(.server-config-page) {
+    flex-direction: column;
+    padding: 0;
+}
+
+/* ---------- Page shell ---------- */
+body:has(#serverConfigPage) .server-config-page {
+    --sc-radius-lg: 20px;
+    --sc-radius-md: 14px;
+    --sc-radius-sm: 10px;
+    --sc-shadow-soft: 0 18px 50px rgba(45, 20, 80, 0.08);
+    --sc-shadow-card: 0 4px 24px rgba(45, 20, 80, 0.06);
+    --sc-border: 1px solid color-mix(in srgb, var(--border-color) 85%, transparent);
+    --sc-accent-glow: color-mix(in srgb, var(--primary-color) 22%, transparent);
+    background:
+        radial-gradient(1200px 600px at 12% -10%, color-mix(in srgb, var(--primary-color) 18%, transparent), transparent 55%),
+        radial-gradient(900px 500px at 88% 0%, color-mix(in srgb, var(--accent-color) 12%, transparent), transparent 50%),
+        var(--bg-color);
+}
+
+[data-theme="dark"] body:has(#serverConfigPage) .server-config-page {
+    --sc-shadow-soft: 0 20px 60px rgba(0, 0, 0, 0.45);
+    --sc-shadow-card: 0 8px 32px rgba(0, 0, 0, 0.35);
+    background:
+        radial-gradient(1000px 500px at 10% -5%, rgba(156, 106, 255, 0.12), transparent 55%),
+        radial-gradient(800px 400px at 95% 5%, rgba(126, 255, 219, 0.06), transparent 45%),
+        var(--bg-color);
+}
+
+/* ---------- Sticky header ---------- */
+body:has(#serverConfigPage) .config-header {
+    display: flex;
+    align-items: center;
+    gap: 1.25rem;
+    flex-wrap: wrap;
+    padding: 1rem 1.75rem;
+    margin-bottom: 0;
+    background: color-mix(in srgb, var(--card-bg) 88%, transparent);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    border-bottom: var(--sc-border);
+    box-shadow: 0 1px 0 color-mix(in srgb, var(--primary-color) 8%, transparent);
+}
+
+body:has(#serverConfigPage) .config-header-start {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+body:has(#serverConfigPage) .menu-toggle-btn {
+    margin-right: 0;
+    border-radius: var(--sc-radius-sm);
+    box-shadow: var(--sc-shadow-card);
+}
+
+body:has(#serverConfigPage) .back-btn {
+    border-radius: var(--sc-radius-sm);
+    border: 1px solid color-mix(in srgb, var(--border-color) 70%, transparent);
+    background: var(--card-bg);
+    font-weight: 700;
+    font-size: 0.9rem;
+    gap: 0.5rem;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+}
+
+body:has(#serverConfigPage) .back-btn:hover {
+    border-color: color-mix(in srgb, var(--primary-color) 35%, var(--border-color));
+    transform: translateY(-1px);
+}
+
+body:has(#serverConfigPage) .server-header-info {
+    gap: 1.1rem;
+    flex: 1 1 220px;
+    min-width: 0;
+}
+
+body:has(#serverConfigPage) .server-icon-container {
+    width: 56px;
+    height: 56px;
+    border-radius: 14px;
+    box-shadow: var(--sc-shadow-card), 0 0 0 2px var(--sc-accent-glow);
+}
+
+body:has(#serverConfigPage) .server-info-label {
+    margin: 0 0 0.15rem 0;
+    font-size: 0.7rem;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--primary-color);
+    opacity: 0.95;
+}
+
+body:has(#serverConfigPage) .server-info h1 {
+    font-size: 1.35rem;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    line-height: 1.2;
+}
+
+body:has(#serverConfigPage) .server-id-line {
+    font-family: ui-monospace, 'Cascadia Code', 'Consolas', monospace;
+    font-size: 0.78rem;
+    opacity: 0.85;
+}
+
+body:has(#serverConfigPage) .user-profile-header {
+    padding: 0.45rem 0.85rem;
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--card-bg) 92%, transparent);
+    border: var(--sc-border);
+    box-shadow: var(--sc-shadow-card);
+}
+
+body:has(#serverConfigPage) .user-avatar-small {
+    width: 36px;
+    height: 36px;
+    border: 2px solid color-mix(in srgb, var(--primary-color) 25%, transparent);
+}
+
+/* ---------- Main layout + sidebar ---------- */
+body:has(#serverConfigPage) .config-main-layout {
+    padding: 0 1rem 1rem;
+    gap: 0;
+}
+
+@media (min-width: 900px) {
+    body:has(#serverConfigPage) .config-main-layout {
+        padding: 0 1.25rem 1.25rem;
+        gap: 1rem;
+    }
+}
+
+body:has(#serverConfigPage) .config-sidebar {
+    flex: 0 0 280px;
+    width: 280px;
+    border-radius: var(--sc-radius-lg);
+    border: var(--sc-border);
+    background: color-mix(in srgb, var(--card-bg) 96%, transparent);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    box-shadow: var(--sc-shadow-soft);
+}
+
+@media (min-width: 900px) {
+    body:has(#serverConfigPage) .config-sidebar {
+        margin-top: 0.25rem;
+        align-self: stretch;
+        max-height: calc(100dvh - 70px - 5.5rem);
+        position: sticky;
+        top: calc(70px + 5.5rem);
+    }
+}
+
+body:has(#serverConfigPage) .sidebar-header {
+    padding: 1.35rem 1.25rem;
+    border-bottom: var(--sc-border);
+    background: transparent;
+}
+
+body:has(#serverConfigPage) .sidebar-eyebrow {
+    margin: 0 0 0.2rem 0;
+    font-size: 0.68rem;
+    font-weight: 800;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--text-light);
+}
+
+body:has(#serverConfigPage) .sidebar-header h3 {
+    font-size: 1.15rem;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+}
+
+body:has(#serverConfigPage) .sidebar-close {
+    border-radius: 10px;
+    color: var(--text-color);
+}
+
+body:has(#serverConfigPage) .sidebar-nav {
+    padding: 0.75rem 0.65rem 1.25rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+}
+
+body:has(#serverConfigPage) .nav-item {
+    display: flex;
+    align-items: center;
+    gap: 0.85rem;
+    padding: 0.75rem 0.85rem;
+    border-radius: var(--sc-radius-md);
+    border: 1px solid transparent;
+    border-left: 3px solid transparent;
+    text-decoration: none;
+    transition: background 0.2s ease, border-color 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+body:has(#serverConfigPage) .nav-item:hover {
+    background: color-mix(in srgb, var(--primary-color) 6%, var(--card-bg));
+    border-color: color-mix(in srgb, var(--border-color) 80%, transparent);
+    transform: translateX(2px);
+}
+
+body:has(#serverConfigPage) .nav-item.active {
+    background: linear-gradient(
+        135deg,
+        color-mix(in srgb, var(--primary-color) 14%, var(--card-bg)),
+        color-mix(in srgb, var(--primary-color) 6%, var(--card-bg))
+    );
+    border-color: color-mix(in srgb, var(--primary-color) 22%, transparent);
+    border-left-color: var(--primary-color);
+    color: var(--text-color);
+    box-shadow: 0 6px 20px color-mix(in srgb, var(--primary-color) 15%, transparent);
+}
+
+body:has(#serverConfigPage) .nav-item-icon {
+    width: 42px;
+    height: 42px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    background: color-mix(in srgb, var(--primary-color) 10%, var(--card-bg));
+    color: var(--primary-color);
+    font-size: 1rem;
+}
+
+body:has(#serverConfigPage) .nav-item.active .nav-item-icon {
+    background: color-mix(in srgb, var(--primary-color) 22%, var(--card-bg));
+    color: var(--primary-dark);
+}
+
+body:has(#serverConfigPage) .nav-item-text {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.15rem;
+    min-width: 0;
+}
+
+body:has(#serverConfigPage) .nav-item-title {
+    font-weight: 700;
+    font-size: 0.95rem;
+    line-height: 1.2;
+}
+
+body:has(#serverConfigPage) .nav-item-desc {
+    font-size: 0.75rem;
+    color: var(--text-light);
+    line-height: 1.25;
+}
+
+body:has(#serverConfigPage) .nav-item.active .nav-item-desc {
+    color: color-mix(in srgb, var(--text-color) 65%, var(--text-light));
+}
+
+/* ---------- Content canvas ---------- */
+body:has(#serverConfigPage) .config-content-wrapper {
+    border-radius: var(--sc-radius-lg);
+    border: var(--sc-border);
+    background: color-mix(in srgb, var(--card-bg) 97%, transparent);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    box-shadow: var(--sc-shadow-soft);
+    margin-top: 0.25rem;
+}
+
+@media (max-width: 899px) {
+    body:has(#serverConfigPage) .config-main-layout {
+        flex-direction: column;
+    }
+
+    body:has(#serverConfigPage) .config-sidebar {
+        width: 100%;
+        flex: 0 0 auto;
+        border-radius: var(--sc-radius-lg);
+        border: var(--sc-border);
+        margin-top: 0;
+        position: relative;
+        top: auto;
+    }
+}
+
+body:has(#serverConfigPage) .config-content {
+    padding: 1.5rem 1.35rem 2rem;
+    max-width: 920px;
+}
+
+@media (min-width: 900px) {
+    body:has(#serverConfigPage) .config-content {
+        padding: 2rem 2.25rem 2.5rem;
+    }
+}
+
+body:has(#serverConfigPage) .section-header {
+    margin-bottom: 1.75rem;
+    padding-bottom: 1.25rem;
+    border-bottom: 1px solid color-mix(in srgb, var(--border-color) 90%, transparent);
+}
+
+body:has(#serverConfigPage) .section-header-text {
+    max-width: 42rem;
+}
+
+body:has(#serverConfigPage) .section-eyebrow {
+    margin: 0 0 0.35rem 0;
+    font-size: 0.72rem;
+    font-weight: 800;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--primary-color);
+}
+
+body:has(#serverConfigPage) .section-header h2 {
+    margin: 0 0 0.5rem 0;
+    font-size: clamp(1.35rem, 2.5vw, 1.75rem);
+    font-weight: 800;
+    letter-spacing: -0.03em;
+    line-height: 1.2;
+    display: block;
+}
+
+body:has(#serverConfigPage) .section-lead {
+    margin: 0;
+    font-size: 0.95rem;
+    line-height: 1.55;
+    color: var(--text-light);
+}
+
+body:has(#serverConfigPage) .config-subsection {
+    margin-bottom: 1.35rem;
+    padding: 1.35rem 1.4rem;
+    border-radius: var(--sc-radius-md);
+    border: var(--sc-border);
+    background: color-mix(in srgb, var(--card-bg) 100%, transparent);
+    box-shadow: var(--sc-shadow-card);
+    transition: box-shadow 0.25s ease, border-color 0.25s ease;
+}
+
+body:has(#serverConfigPage) .config-subsection:hover {
+    border-color: color-mix(in srgb, var(--primary-color) 18%, var(--border-color));
+    box-shadow: 0 8px 28px color-mix(in srgb, var(--primary-color) 8%, transparent);
+}
+
+body:has(#serverConfigPage) .config-subsection h3 {
+    font-size: 1.05rem;
+    font-weight: 800;
+    margin-bottom: 1.1rem;
+    padding-bottom: 0.65rem;
+    border-bottom: 1px dashed color-mix(in srgb, var(--border-color) 85%, transparent);
+}
+
+body:has(#serverConfigPage) .config-section .form-input {
+    border-radius: var(--sc-radius-sm);
+    border-width: 1.5px;
+    padding: 0.7rem 0.85rem;
+    background: color-mix(in srgb, var(--bg-color) 35%, var(--card-bg));
+}
+
+body:has(#serverConfigPage) .config-section .form-input:focus {
+    background: var(--card-bg);
+}
+
+body:has(#serverConfigPage) .config-section .form-group small {
+    font-size: 0.82rem;
+    opacity: 0.95;
+}
+
+/* Prefix field: compact monospace */
+body:has(#serverConfigPage) #server-prefix.form-input {
+    max-width: 120px;
+    font-family: ui-monospace, 'Consolas', monospace;
+    font-weight: 700;
+    font-size: 1.05rem;
+    text-align: center;
+}
+
+/* Toggle row (override label flex from dashboard for .toggle-switch) */
+body:has(#serverConfigPage) .config-section .form-group label.toggle-switch {
+    justify-content: flex-start;
+}
+
+body:has(#serverConfigPage) .toggle-switch {
+    padding: 0.65rem 0.85rem;
+    border-radius: var(--sc-radius-sm);
+    background: color-mix(in srgb, var(--bg-color) 40%, var(--card-bg));
+    border: 1px solid color-mix(in srgb, var(--border-color) 70%, transparent);
+}
+
+body:has(#serverConfigPage) .toggle-switch > span:last-of-type {
+    font-weight: 600;
+}
+
+/* Icon buttons in labels */
+body:has(#serverConfigPage) .config-section .btn-icon {
+    border-radius: 8px;
+    margin-left: 0.35rem;
+    box-shadow: 0 2px 8px color-mix(in srgb, var(--primary-color) 15%, transparent);
+}
+
+body:has(#serverConfigPage) .config-section .btn-icon:hover {
+    transform: scale(1.05) rotate(15deg);
+}
+
+/* ---------- Message preview blocks ---------- */
+body:has(#serverConfigPage) .message-preview-container {
+    margin-top: 1.25rem;
+    padding: 1.25rem;
+    border-radius: var(--sc-radius-md);
+    border: var(--sc-border);
+    background: linear-gradient(
+        160deg,
+        color-mix(in srgb, var(--card-bg) 100%, transparent),
+        color-mix(in srgb, var(--primary-color) 4%, var(--card-bg))
+    );
+}
+
+body:has(#serverConfigPage) .preview-header h3 {
+    font-weight: 800;
+    font-size: 1rem;
+}
+
+body:has(#serverConfigPage) .preview-header .btn {
+    border-radius: var(--sc-radius-sm);
+    font-weight: 700;
+}
+
+body:has(#serverConfigPage) .message-preview-section {
+    border-radius: var(--sc-radius-sm) !important;
+    overflow: hidden;
+}
+
+/* ---------- Modules grid ---------- */
+body:has(#serverConfigPage) .module-toggle {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 0.65rem;
+    margin-top: 0.25rem;
+}
+
+@media (min-width: 640px) {
+    body:has(#serverConfigPage) .module-toggle {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+body:has(#serverConfigPage) .toggle-item {
+    flex-direction: row-reverse;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 1rem 1.1rem;
+    border-radius: var(--sc-radius-md);
+    border: var(--sc-border);
+    background: color-mix(in srgb, var(--bg-color) 25%, var(--card-bg));
+    min-height: 4.5rem;
+}
+
+body:has(#serverConfigPage) .toggle-item:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--sc-shadow-card);
+}
+
+body:has(#serverConfigPage) .toggle-item input[type="checkbox"] {
+    width: 22px;
+    height: 22px;
+}
+
+body:has(#serverConfigPage) .toggle-item span i {
+    font-size: 1.25rem;
+    color: var(--primary-color);
+}
+
+/* ---------- Actions bar ---------- */
+body:has(#serverConfigPage) .config-actions-bar {
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 1rem 1.35rem 1.15rem;
+    border-radius: 0 0 calc(var(--sc-radius-lg) - 2px) calc(var(--sc-radius-lg) - 2px);
+    background: linear-gradient(
+        180deg,
+        color-mix(in srgb, var(--bg-color) 30%, var(--card-bg)),
+        var(--card-bg)
+    );
+    border-top: 1px solid color-mix(in srgb, var(--border-color) 85%, transparent);
+}
+
+body:has(#serverConfigPage) .config-actions-hint {
+    margin: 0;
+    flex: 1 1 200px;
+    font-size: 0.85rem;
+    color: var(--text-light);
+    line-height: 1.45;
+}
+
+body:has(#serverConfigPage) .config-actions-buttons {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.65rem;
+    justify-content: flex-end;
+}
+
+body:has(#serverConfigPage) .config-actions-bar .btn {
+    border-radius: var(--sc-radius-sm);
+    font-weight: 700;
+    padding: 0.65rem 1.25rem;
+}
+
+body:has(#serverConfigPage) .config-actions-bar .primary-btn {
+    box-shadow: 0 6px 20px color-mix(in srgb, var(--primary-color) 35%, transparent);
+}
+
+body:has(#serverConfigPage) .config-actions-bar .primary-btn:hover {
+    transform: translateY(-1px);
+}
+
+/* ---------- Loading overlay ---------- */
+body:has(#serverConfigPage) #loadingOverlay {
+    background: color-mix(in srgb, var(--bg-color) 75%, #000);
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+}
+
+body:has(#serverConfigPage) #loadingOverlay .loading-spinner {
+    padding: 2rem 2.5rem;
+    border-radius: var(--sc-radius-lg);
+    background: var(--card-bg);
+    border: var(--sc-border);
+    box-shadow: var(--sc-shadow-soft);
+}
+
+body:has(#serverConfigPage) #loadingOverlay .loading-spinner p {
+    font-weight: 700;
+    margin-top: 0.75rem;
+}
+
+/* ---------- Message edit modal ---------- */
+body:has(#serverConfigPage) #message-edit-modal.sc-message-modal .modal-content.sc-message-modal__content {
+    border-radius: var(--sc-radius-lg);
+    border: var(--sc-border);
+    box-shadow: var(--sc-shadow-soft);
+    overflow: hidden;
+}
+
+body:has(#serverConfigPage) #message-edit-modal .modal-header {
+    padding: 1.25rem 1.5rem;
+    background: linear-gradient(
+        135deg,
+        color-mix(in srgb, var(--primary-color) 10%, var(--card-bg)),
+        var(--card-bg)
+    );
+}
+
+body:has(#serverConfigPage) #message-edit-modal .modal-header h3 {
+    font-weight: 800;
+    letter-spacing: -0.02em;
+}
+
+body:has(#serverConfigPage) #message-edit-modal .modal-body {
+    padding: 1.5rem;
+}
+
+body:has(#serverConfigPage) #message-edit-modal .form-input,
+body:has(#serverConfigPage) #message-edit-modal textarea.form-input {
+    border-radius: var(--sc-radius-sm);
+}
+
+body:has(#serverConfigPage) #message-edit-modal .modal-footer {
+    padding: 1rem 1.5rem 1.25rem;
+    background: color-mix(in srgb, var(--bg-color) 35%, var(--card-bg));
+    border-top: var(--sc-border);
+}
+
+body:has(#serverConfigPage) #message-edit-modal .modal-footer .btn {
+    border-radius: var(--sc-radius-sm);
+    font-weight: 700;
+}
+
+body:has(#serverConfigPage) #message-edit-modal .placeholders-tutorial {
+    border-radius: var(--sc-radius-md);
+    border: var(--sc-border);
+    padding: 0.75rem;
+    background: color-mix(in srgb, var(--bg-color) 40%, var(--card-bg));
+}
+
+body:has(#serverConfigPage) #message-edit-modal .placeholder-item {
+    border-radius: var(--sc-radius-sm);
+}
+
+/* ---------- Emoji sidebar (this page) ---------- */
+body:has(#serverConfigPage) .emoji-sidebar {
+    border-radius: var(--sc-radius-lg) 0 0 var(--sc-radius-lg);
+    box-shadow: var(--sc-shadow-soft);
+}
+
+body:has(#serverConfigPage) .emoji-sidebar-header {
+    border-bottom: var(--sc-border);
+}

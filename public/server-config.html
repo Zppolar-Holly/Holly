@@ -7,17 +7,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="/css/dashboard.css">
-    <style>
-        body {
-            margin: 0;
-            padding: 0;
-            background: var(--bg-color);
-        }
-        .dashboard-container:has(.server-config-page) {
-            flex-direction: column;
-            padding: 0;
-        }
-    </style>
+    <link rel="stylesheet" href="/css/server-config.css">
 </head>
 <body>
     <div class="loading-overlay" id="loadingOverlay">
@@ -66,19 +56,23 @@
         <div class="server-config-page" id="serverConfigPage">
             <!-- Header -->
             <div class="config-header">
-                <button class="menu-toggle-btn" id="menuToggle" title="Abrir menu">
-                    <i class="fas fa-bars"></i>
-                </button>
-                <a href="/dashboard" class="back-btn">
-                    <i class="fas fa-arrow-left"></i> Voltar
-                </a>
+                <div class="config-header-start">
+                    <button type="button" class="menu-toggle-btn" id="menuToggle" title="Abrir menu">
+                        <i class="fas fa-bars"></i>
+                    </button>
+                    <a href="/dashboard" class="back-btn">
+                        <i class="fas fa-arrow-left"></i>
+                        <span>Painel</span>
+                    </a>
+                </div>
                 <div class="server-header-info">
                     <div class="server-icon-container">
                         <img id="serverIcon" src="https://cdn.discordapp.com/embed/avatars/0.png" alt="Server Icon" class="server-icon">
                     </div>
                     <div class="server-info">
+                        <p class="server-info-label">Configurando servidor</p>
                         <h1 id="serverName">Carregando...</h1>
-                        <p id="serverId">ID: -</p>
+                        <p id="serverId" class="server-id-line">ID: -</p>
                     </div>
                 </div>
                 <div class="user-profile-header">
@@ -92,28 +86,31 @@
 
             <div class="config-main-layout">
             <!-- Sidebar Navigation -->
-            <div class="config-sidebar" id="configSidebar">
+            <aside class="config-sidebar" id="configSidebar" aria-label="Secções de configuração">
                 <div class="sidebar-header">
-                    <h3>Configurações</h3>
-                    <button class="sidebar-close" id="sidebarClose" title="Fechar menu">
+                    <div>
+                        <p class="sidebar-eyebrow">Navegação</p>
+                        <h3>Configurações</h3>
+                    </div>
+                    <button type="button" class="sidebar-close" id="sidebarClose" title="Fechar menu">
                         <i class="fas fa-times"></i>
                     </button>
                 </div>
                 <nav class="sidebar-nav">
                     <a href="#" class="nav-item" data-section="general">
-                        <i class="fas fa-cog"></i>
-                        <span>Geral</span>
+                        <span class="nav-item-icon"><i class="fas fa-sliders-h"></i></span>
+                        <span class="nav-item-text"><span class="nav-item-title">Geral</span><span class="nav-item-desc">Prefixo e apelido</span></span>
                     </a>
                     <a href="#" class="nav-item" data-section="notifications">
-                        <i class="fas fa-bell"></i>
-                        <span>Sistema de Entrada/Saída</span>
+                        <span class="nav-item-icon"><i class="fas fa-door-open"></i></span>
+                        <span class="nav-item-text"><span class="nav-item-title">Entrada e saída</span><span class="nav-item-desc">Mensagens de membros</span></span>
                     </a>
                     <a href="#" class="nav-item" data-section="modules">
-                        <i class="fas fa-puzzle-piece"></i>
-                        <span>Módulos</span>
+                        <span class="nav-item-icon"><i class="fas fa-puzzle-piece"></i></span>
+                        <span class="nav-item-text"><span class="nav-item-title">Módulos</span><span class="nav-item-desc">Ativar funcionalidades</span></span>
                     </a>
                 </nav>
-            </div>
+            </aside>
 
             <!-- Main Content Area -->
             <div class="config-content-wrapper">
@@ -121,7 +118,11 @@
                     <!-- Seção Geral -->
                     <div class="config-section" data-section="general" style="display: none;">
                         <div class="section-header">
-                            <h2><i class="fas fa-cog"></i> Configurações Gerais</h2>
+                            <div class="section-header-text">
+                                <p class="section-eyebrow">Servidor</p>
+                                <h2>Configurações gerais</h2>
+                                <p class="section-lead">Prefixo de comandos e apelido do bot neste servidor.</p>
+                            </div>
                         </div>
                         
                         <!-- Prefixo -->
@@ -160,7 +161,11 @@
                     <!-- Seção Sistema de Entrada/Saída -->
                     <div class="config-section" data-section="notifications" style="display: none;">
                         <div class="section-header">
-                            <h2><i class="fas fa-bell"></i> Sistema de Entrada e Saída de Membros</h2>
+                            <div class="section-header-text">
+                                <p class="section-eyebrow">Mensagens</p>
+                                <h2>Entrada e saída de membros</h2>
+                                <p class="section-lead">Canais, textos e pré-visualização estilo Discord.</p>
+                            </div>
                         </div>
                         
                         <!-- Sistema de Entrada -->
@@ -312,7 +317,11 @@
                     <!-- Seção Módulos -->
                     <div class="config-section" data-section="modules" style="display: none;">
                         <div class="section-header">
-                            <h2><i class="fas fa-puzzle-piece"></i> Módulos</h2>
+                            <div class="section-header-text">
+                                <p class="section-eyebrow">Funcionalidades</p>
+                                <h2>Módulos do bot</h2>
+                                <p class="section-lead">Escolhe quais conjuntos de comandos ficam disponíveis.</p>
+                            </div>
                         </div>
                         <div class="config-subsection">
                             <div class="module-toggle">
@@ -353,8 +362,11 @@
                     </div>
                 </div>
                 <div class="config-actions-bar">
-                    <button type="button" class="btn secondary-btn" id="cancel-btn">Voltar ao painel</button>
-                    <button type="button" class="btn primary-btn" id="save-btn"><i class="fas fa-save"></i> Salvar alterações</button>
+                    <p class="config-actions-hint">As alterações só ficam guardadas depois de confirmares.</p>
+                    <div class="config-actions-buttons">
+                        <button type="button" class="btn secondary-btn" id="cancel-btn">Voltar ao painel</button>
+                        <button type="button" class="btn primary-btn" id="save-btn"><i class="fas fa-save"></i> Salvar alterações</button>
+                    </div>
                 </div>
             </div>
             </div>
@@ -362,8 +374,8 @@
     </main>
 
     <!-- Modal de Edição de Mensagem -->
-    <div class="modal" id="message-edit-modal">
-        <div class="modal-content" style="max-width: 900px;">
+    <div class="modal sc-message-modal" id="message-edit-modal">
+        <div class="modal-content sc-message-modal__content" style="max-width: 900px;">
             <div class="modal-header">
                 <h3 id="modal-title">Editar Mensagem</h3>
                 <button class="close-modal" id="close-message-modal">&times;</button>
