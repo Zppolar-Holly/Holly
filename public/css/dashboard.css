@@ -2594,9 +2594,11 @@ html, body {
 .server-config-page {
     width: 100%;
     min-height: 100vh;
+    min-height: 100dvh;
     background: var(--bg-color);
     display: flex;
     flex-direction: column;
+    position: relative;
 }
 
 .config-header {
@@ -2610,7 +2612,9 @@ html, body {
     margin-bottom: 0;
     position: sticky;
     top: 70px; /* Altura da navbar */
-    z-index: 9999; /* Muito alto para ficar acima de tudo */
+    /* Abaixo da sidebar de config (evita cobrir o menu lateral) e abaixo de modais/emoji picker */
+    z-index: 105;
+    flex-shrink: 0;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
 }
 
@@ -3536,12 +3540,13 @@ html, body {
 .config-sidebar {
     position: fixed;
     left: -300px;
-    top: 0;
-    height: 100vh;
+    top: 70px; /* abaixo da navbar fixa */
+    height: calc(100vh - 70px);
+    height: calc(100dvh - 70px);
     width: 280px;
     background: var(--card-bg);
     border-right: 1px solid var(--border-color);
-    z-index: 1000;
+    z-index: 1200; /* acima do config-header (105) e da navbar (1000) */
     transition: left 0.3s ease;
     overflow-y: auto;
     box-shadow: 2px 0 10px rgba(0, 0, 0, 0.1);
@@ -3549,6 +3554,24 @@ html, body {
 
 .config-sidebar.active {
     left: 0;
+}
+
+.config-sidebar-backdrop {
+    display: none;
+    position: fixed;
+    inset: 0;
+    z-index: 1150;
+    background: rgba(0, 0, 0, 0.35);
+    cursor: pointer;
+}
+
+.server-config-page.config-nav-open .config-sidebar-backdrop {
+    display: block;
+}
+
+.server-config-page.config-nav-open .config-sidebar.active {
+    z-index: 1250;
+    box-shadow: 4px 0 24px rgba(0, 0, 0, 0.18);
 }
 
 .sidebar-header {
@@ -3637,9 +3660,13 @@ html, body {
 
 .config-content-wrapper {
     flex: 1;
+    min-height: 0;
     overflow-y: auto;
+    overflow-x: hidden;
     margin-left: 0;
     transition: margin-left 0.3s ease;
+    position: relative;
+    z-index: 1;
 }
 
 .config-content {
@@ -3647,6 +3674,7 @@ html, body {
     max-width: 1200px;
     margin: 0 auto;
     width: 100%;
+    box-sizing: border-box;
 }
 
 .config-section {
@@ -3693,7 +3721,15 @@ html, body {
 @media (max-width: 768px) {
     .config-sidebar {
         width: 100%;
+        max-width: 320px;
         left: -100%;
+        top: 70px;
+        height: calc(100vh - 70px);
+        height: calc(100dvh - 70px);
+    }
+
+    .config-sidebar.active {
+        left: 0;
     }
 }
 

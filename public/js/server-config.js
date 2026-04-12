@@ -967,6 +967,8 @@ document.addEventListener('DOMContentLoaded', async function() {
         const menuToggle = document.getElementById('menuToggle');
         const sidebar = document.getElementById('configSidebar');
         const sidebarClose = document.getElementById('sidebarClose');
+        const sidebarBackdrop = document.getElementById('configSidebarBackdrop');
+        const serverConfigPage = document.getElementById('serverConfigPage');
         const navItems = document.querySelectorAll('.nav-item');
         
         console.log(`   - Menu toggle: ${!!menuToggle}`);
@@ -975,11 +977,23 @@ document.addEventListener('DOMContentLoaded', async function() {
         console.log(`   - Nav items: ${navItems.length}`);
         
         // Toggle sidebar
+        function setNavOpen(isOpen) {
+            if (serverConfigPage) {
+                serverConfigPage.classList.toggle('config-nav-open', isOpen);
+            }
+            if (sidebarBackdrop) {
+                sidebarBackdrop.setAttribute('aria-hidden', isOpen ? 'false' : 'true');
+            }
+            document.body.style.overflow = isOpen ? 'hidden' : '';
+        }
+
         function toggleSidebar() {
             console.log('🔄 Alternando sidebar...');
             if (sidebar) {
                 sidebar.classList.toggle('active');
-                console.log(`   - Sidebar ativa: ${sidebar.classList.contains('active')}`);
+                const on = sidebar.classList.contains('active');
+                setNavOpen(on);
+                console.log(`   - Sidebar ativa: ${on}`);
             }
         }
         
@@ -989,6 +1003,7 @@ document.addEventListener('DOMContentLoaded', async function() {
             if (sidebar) {
                 sidebar.classList.remove('active');
             }
+            setNavOpen(false);
         }
         
         // Show section
@@ -1022,10 +1037,8 @@ document.addEventListener('DOMContentLoaded', async function() {
                     }
                 });
                 
-                // Close sidebar on mobile
-                if (window.innerWidth <= 768) {
-                    closeSidebar();
-                }
+                // Fecha o menu apos escolher secao (conteudo fica visivel; evita header/sidebar sobrepostos)
+                closeSidebar();
             } else {
                 console.error(`   ❌ Seção "${sectionName}" não encontrada no DOM!`);
                 console.error(`   - Seções disponíveis:`, Array.from(allSections).map(s => s.getAttribute('data-section')));
@@ -1039,6 +1052,10 @@ document.addEventListener('DOMContentLoaded', async function() {
         
         if (sidebarClose) {
             sidebarClose.addEventListener('click', closeSidebar);
+        }
+
+        if (sidebarBackdrop) {
+            sidebarBackdrop.addEventListener('click', closeSidebar);
         }
         
         // Nav item clicks
